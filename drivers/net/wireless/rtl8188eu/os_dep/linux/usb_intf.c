@@ -183,9 +183,9 @@ static struct usb_device_id rtw_usb_id_tbl[] ={
 	{USB_DEVICE_AND_INTERFACE_INFO(USB_VENDER_ID_REALTEK, 0x1724,0xff,0xff,0xff)}, //8723AU 1*1
 	{USB_DEVICE_AND_INTERFACE_INFO(USB_VENDER_ID_REALTEK, 0x0724,0xff,0xff,0xff)}, //8723AU 1*1
 #endif
-#ifdef CONFIG_RTL8188E
+#ifdef CONFIG_RTL8188EU
 	/*=== Realtek demoboard ===*/		
-	{USB_DEVICE(USB_VENDER_ID_REALTEK, 0x8179)},//Default ID	
+	{USB_DEVICE(USB_VENDER_ID_REALTEK, 0x0179)},//Default ID
 #endif
 	{}	/* Terminating entry */
 };
