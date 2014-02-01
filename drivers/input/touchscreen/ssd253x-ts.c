@@ -40,7 +40,7 @@
 #define SCREEN_MAX_Y    272
 #define MAX_FINGERS 2
 
-#define PRINT_INT_INFO
+//#define PRINT_INT_INFO
 #ifdef PRINT_INT_INFO
 #define print_int_info(fmt, args...)     \
         do{                              \
@@ -609,17 +609,17 @@ static void i2c_access_work(struct work_struct *work)
 
 	struct ssd2533_ts *ts = container_of(work, struct ssd2533_ts, ts_work);
 
-	pr_info("==========------TS Interrupt: i2c_access_work-----============\n");
+	print_int_info("==========------TS Interrupt: i2c_access_work-----============\n");
 
 	while(1)
 	{
-        pr_info("==========------TS Interrupt: i2c_access_work, while(1) loop-----============\n");
+        print_int_info("==========------TS Interrupt: i2c_access_work, while(1) loop-----============\n");
 		tp_ssd2533_read_reg(ts->client,0x79,event_status,2);
 		status = (unsigned short int)(event_status[0] << 8 | event_status[1]);
 		status &= 0x3fff;
 		if(status == 0)
 		{
-            pr_info("==========------TS Interrupt: i2c_access_work, while(1) loop: status == 0-----============\n");
+            print_int_info("==========------TS Interrupt: i2c_access_work, while(1) loop: status == 0-----============\n");
 			/* Nothing to do */
 			break;
 		}
@@ -630,25 +630,25 @@ static void i2c_access_work(struct work_struct *work)
 
 		for(i = 0; i < MAX_FINGERS; i++)
 		{
-            pr_info("==========------TS Interrupt: i2c_access_work, while(1) loop: for{} loop-----============\n");
+            print_int_info("==========------TS Interrupt: i2c_access_work, while(1) loop: for{} loop-----============\n");
 			/* Check to see if the event is an actual finger event */
 			if(((status >> 4) & (1 << i)) != 0)
 			{
-                pr_info("==========------TS Interrupt: reading x,y,z values from register-----============\n");
+                print_int_info("==========------TS Interrupt: reading x,y,z values from register-----============\n");
 				tp_ssd2533_read_reg(ts->client,0x7C + i, val, 4);
 
 				x = val[0] | ((val[2] & 0xF0) << 4);
 				y = val[1] | ((val[2] & 0x0F) << 8);
 				z = (val[3] & 0xF0) >> 4;
 
-                pr_info("==========------TS Interrupt: RAW ts (x,y,z)=(%d,%d,%d)-----============\n",x,y,z);
+                print_int_info("==========------TS Interrupt: RAW ts (x,y,z)=(%d,%d,%d)-----============\n",x,y,z);
 
 				x =  x*SCREEN_MAX_WIDTH/touch_size_x;
 		        y =  y*SCREEN_MAX_HEIGHT/touch_size_y ;
 
                 if( x <= SCREEN_MAX_X && y <= SCREEN_MAX_Y )
                     {
-                    pr_info("==========------TS Interrupt: REPORTING RESOLUTION (x,y)=(%d,%d)-----============\n",x,y);
+                    print_int_info("==========------TS Interrupt: REPORTING RESOLUTION (x,y)=(%d,%d)-----============\n",x,y);
                     input_report_abs(ts->dev, ABS_MT_TOUCH_MAJOR, z);
                     input_report_abs(ts->dev, ABS_MT_WIDTH_MAJOR, z);
                     input_report_abs(ts->dev, ABS_MT_POSITION_X,  x);
@@ -673,14 +673,14 @@ static irqreturn_t stylus_action(int irqno, void *param)
 	struct ssd2533_ts *ts = param;
 	int reg_val;
 	disable_irq_nosync(ts->gpio_irq);
-	pr_info("==========------TS Interrupt-----============\n");
+	print_int_info("==========------TS Interrupt-----============\n");
 
 	//clear the IRQ_EINT21 interrupt pending
 	reg_val = readl(gpio_addr + PIO_INT_STAT_OFFSET);
 
 	if (reg_val&(1<<(CTP_IRQ_NO))) {
 		writel(reg_val&(1<<(CTP_IRQ_NO)),gpio_addr + PIO_INT_STAT_OFFSET);
-	    pr_info("==========------TS Interrupt queue_work-----============\n");
+	    print_int_info("==========------TS Interrupt queue_work-----============\n");
 		queue_work(ts->ts_workqueue, &ts->ts_work);
 	}
 	else
