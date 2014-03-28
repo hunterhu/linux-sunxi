@@ -555,8 +555,7 @@ static void sw_hcd_board_set_vbus(struct sw_hcd *sw_hcd, int is_on)
 					on_off);
 		else
 			gpio_write_one_pin_value(hcd_io->Drv_vbus_Handle,
-					0, NULL);
-					//on_off, NULL);
+					on_off, NULL);
 	/* set gpio data */
 		USBC_Host_StartSession(sw_hcd->sw_hcd_io->usb_bsp_hdle);
 		USBC_ForceVbusValid(sw_hcd->sw_hcd_io->usb_bsp_hdle, USBC_VBUS_TYPE_HIGH);
