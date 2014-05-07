@@ -625,6 +625,7 @@ LCD_get_sys_config(__u32 sel, __disp_lcd_cfg_t *lcd_cfg)
 		}
 	}
 
+#if 0
 	/* init_brightness */
 	sprintf(primary_key, "disp_init");
 	sprintf(sub_name, "lcd%d_bright", sel);
@@ -640,6 +641,10 @@ LCD_get_sys_config(__u32 sel, __disp_lcd_cfg_t *lcd_cfg)
 
 		lcd_cfg->init_bright = value;
 	}
+#endif
+
+    /* Set Brightness to Maximum */
+    lcd_cfg->init_bright = 256;
 }
 
 void LCD_delay_ms(__u32 ms)
