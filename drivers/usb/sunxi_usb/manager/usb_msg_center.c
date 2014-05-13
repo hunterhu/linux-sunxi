@@ -240,7 +240,7 @@ static void insmod_device_driver(struct usb_msg_center_info *center_info)
 	axp_usbcur();
 #endif
 
-	set_usb_role(center_info, USB_ROLE_HOST);
+	set_usb_role(center_info, USB_ROLE_DEVICE);
 	sw_usb_device_enable();
 
 	return;
