@@ -166,7 +166,8 @@ static u32 get_id_state(struct usb_scan_info *info)
 	if(info->id_hdle){
 		if(!PIODataIn_debounce(info->id_hdle, &pin_data)){
 			if(pin_data){
-				id_state = USB_DEVICE_MODE;
+				//id_state = USB_DEVICE_MODE;
+				id_state = USB_HOST_MODE;
 			}else{
 				id_state = USB_HOST_MODE;
 			}
@@ -353,6 +354,42 @@ static void do_vbus0_id1(struct usb_scan_info *info)
 
 	role = get_usb_role();
 	info->device_insmod_delay = 0;
+
+	switch(role){
+		case USB_ROLE_NULL:
+			/* delay for vbus is stably */
+			if(info->host_insmod_delay < USB_SCAN_INSMOD_HOST_DRIVER_DELAY){
+				info->host_insmod_delay++;
+				break;
+			}
+			info->host_insmod_delay = 0;
+
+			/* insmod usb host */
+			hw_insmod_usb_host();
+		break;
+
+		case USB_ROLE_HOST:
+			/* nothing to do */
+		break;
+
+		case USB_ROLE_DEVICE:
+			/* rmmod usb device */
+			hw_rmmod_usb_device();
+		break;
+
+		default:
+			DMSG_PANIC("ERR: unkown usb role(%d)\n", role);
+	}
+
+	return;
+}
+#if 0
+static void do_vbus0_id1(struct usb_scan_info *info)
+{
+	enum usb_role role = USB_ROLE_NULL;
+
+	role = get_usb_role();
+	info->device_insmod_delay = 0;
 	info->host_insmod_delay   = 0;
 
 	switch(role){
@@ -374,6 +411,7 @@ static void do_vbus0_id1(struct usb_scan_info *info)
 
 	return;
 }
+#endif
 
 /*
 *******************************************************************************
@@ -450,6 +488,40 @@ static void do_vbus1_id1(struct usb_scan_info *info)
 	enum usb_role role = USB_ROLE_NULL;
 
 	role = get_usb_role();
+	info->device_insmod_delay = 0;
+
+	switch(role){
+		case USB_ROLE_NULL:
+			/* delay for vbus is stably */
+			if(info->host_insmod_delay < USB_SCAN_INSMOD_HOST_DRIVER_DELAY){
+				info->host_insmod_delay++;
+				break;
+			}
+			info->host_insmod_delay = 0;
+
+			hw_insmod_usb_host();
+		break;
+
+		case USB_ROLE_HOST:
+			/* nothing to do */
+		break;
+
+		case USB_ROLE_DEVICE:
+			hw_rmmod_usb_device();
+		break;
+
+		default:
+			DMSG_PANIC("ERR: unkown usb role(%d)\n", role);
+	}
+
+	return;
+}
+#if 0
+static void do_vbus1_id1(struct usb_scan_info *info)
+{
+	enum usb_role role = USB_ROLE_NULL;
+
+	role = get_usb_role();
 	info->host_insmod_delay = 0;
 
 	switch(role){
@@ -481,6 +553,7 @@ static void do_vbus1_id1(struct usb_scan_info *info)
 
 	return;
 }
+#endif
 
 /*
 *******************************************************************************
