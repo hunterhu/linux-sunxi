@@ -40,7 +40,7 @@
 #define SCREEN_MAX_Y    272
 #define MAX_FINGERS 2
 
-#define PRINT_INT_INFO
+/* #define PRINT_INT_INFO */
 #ifdef PRINT_INT_INFO
 #define print_int_info(fmt, args...)     \
         do{                              \
