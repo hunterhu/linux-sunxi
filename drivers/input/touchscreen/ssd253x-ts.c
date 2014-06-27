@@ -97,6 +97,9 @@ struct mt_info
 
 static const char *ts_name ="ssd253x-ts";
 
+static unsigned int ts_threshhold = 200;
+static unsigned int ts_num = 0 ;
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void ssd2533_suspend(struct early_suspend *handler);
 static void ssd2533_resume(struct early_suspend *handler);
@@ -665,6 +668,18 @@ static void i2c_access_work(struct work_struct *work)
 	input_report_abs(ts->dev,ABS_MT_TOUCH_MAJOR, 0);
 	input_sync(ts->dev);
 	enable_irq(ts->gpio_irq);
+
+    /*Handle instability of touchscreen chip*/
+    ts_num++;
+    print_int_info("==========------TS Interrupt: ts_num=%u-----============\n",ts_num);
+    /* when we hit a threshhold, reset the chip */
+    if ( ts_num >= ts_threshhold )
+    {
+        print_int_info("==========------TS Interrupt: resetting touch panel-----============\n");
+        ts_num = 0;
+        ctp_ops.ts_reset();
+        //ctp_ops.ts_wakeup();
+    }
 }
 
 static irqreturn_t stylus_action(int irqno, void *param)
