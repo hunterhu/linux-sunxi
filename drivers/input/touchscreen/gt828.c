@@ -606,7 +606,6 @@ notice: init panel need to be complete within 200ms.
 static int goodix_init_panel(struct goodix_ts_data *ts)
 {
 	int ret=-1;
-	int i = 0;
 	uint8_t info_1024x768[] = {0x00, 0x04};
 	static uint8_t data_info1[] = {
 		0x0F,0x80,
