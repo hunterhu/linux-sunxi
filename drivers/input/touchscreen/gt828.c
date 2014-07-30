@@ -65,7 +65,6 @@ static void goodix_ts_late_resume(struct early_suspend *h);
 int  gt818_downloader( struct goodix_ts_data *ts, unsigned char * data,unsigned char * path );
 unsigned int oldcrc32 = 0xFFFFFFFF;
 unsigned int crc32_table[256];
-unsigned int ulPolynomial = 0x04c11db7;
 unsigned int raw_data_ready = RAW_DATA_NON_ACTIVE;
 
 #ifdef DEBUG
@@ -608,7 +607,6 @@ static int goodix_init_panel(struct goodix_ts_data *ts)
 {
 	short ret=-1;
 	uint8_t info_1024x768[] = {0x00, 0x04};
-	uint8_t info_1280x800[] = {0x20, 0x05};
 
     uint8_t config_info_c[] = {		//Touch key devlop board
 		0x0F,0x80,
@@ -1511,108 +1509,6 @@ static void goodix_ts_late_resume(struct early_suspend *h)
 
 //******************************Begin of firmware update surpport*******************************
 #ifdef CONFIG_TOUCHSCREEN_GOODIX_IAP
-/*
-static int  update_read_version(struct goodix_ts_data *ts, char **version)
-{
-	int ret = -1, count = 0;
-	//unsigned char version_data[18];
-	char *version_data;
-	char *p;
-
-	*version = (char *)vmalloc(5);
-	version_data = *version;
-	if(!version_data)
-		return -ENOMEM;
-	p = version_data;
-	memset(version_data, 0, sizeof(version_data));
-	version_data[0]=0x07;
-	version_data[1]=0x17;
-	ret=i2c_read_bytes(ts->client,version_data, 4);
-	if (ret < 0)
-		return ret;
-	version_data[5]='\0';
-
-	if(*p == '\0')
-		return 0;
-	do
-	{
-		if((*p > 122) || (*p < 48 && *p != 32) || (*p >57 && *p  < 65)
-			||(*p > 90 && *p < 97 && *p  != '_'))		//check illeqal character
-			count++;
-	}while(*++p != '\0' );
-	if(count > 2)
-		return 0;
-	else
-		return 1;
-}
-*/
-
-#if 0
-/**
-@brief CRC cal proc,include : Reflect,init_crc32_table,GenerateCRC32
-@param global var oldcrc32
-@return states
-*/
-static unsigned int Reflect(unsigned long int ref, char ch)
-{
-	unsigned int value=0;
-	int i;
-	for(i = 1; i < (ch + 1); i++)
-	{
-		if(ref & 1)
-			value |= 1 << (ch - i);
-		ref >>= 1;
-	}
-	return value;
-}
-#endif
-
-/*---------------------------------------------------------------------------------------------------------*/
-/*  CRC Check Program INIT										   */
-/*---------------------------------------------------------------------------------------------------------*/
-/*
-static void init_crc32_table(void)
-{
-	unsigned int temp;
-	unsigned int t1,t2;
-	unsigned int flag;
-	int i,j;
-	for(i = 0; i <= 0xFF; i++)
-	{
-		temp=Reflect(i, 8);
-		crc32_table[i]= temp<< 24;
-		for (j = 0; j < 8; j++)
-		{
-
-			flag=crc32_table[i]&0x80000000;
-			t1=(crc32_table[i] << 1);
-			if(flag==0)
-				t2=0;
-			else
-				t2=ulPolynomial;
-			crc32_table[i] =t1^t2 ;
-
-		}
-		crc32_table[i] = Reflect(crc32_table[i], 32);
-	}
-}
-*/
-/*---------------------------------------------------------------------------------------------------------*/
-/*  CRC main Program											   */
-/*---------------------------------------------------------------------------------------------------------*/
-/*
-static void GenerateCRC32(unsigned char * buf, unsigned int len)
-{
-	unsigned int i;
-	unsigned int t;
-
-	for (i = 0; i != len; ++i)
-	{
-		t = (oldcrc32 ^ buf[i]) & 0xFF;
-		oldcrc32 = ((oldcrc32 >> 8) & 0xFFFFFF) ^ crc32_table[t];
-	}
-}
-*/
 static struct file * update_file_open(char * path, mm_segment_t * old_fs_p)
 {
 	struct file * filp = NULL;
