@@ -41,8 +41,8 @@
 #include "ctp_platform_ops.h"
 
 #define FOR_TSLIB_TEST
-//#define PRINT_INT_INFO
-//#define PRINT_POINT_INFO
+#define PRINT_INT_INFO
+#define PRINT_POINT_INFO
 #define PRINT_SUSPEND_INFO
 #define TEST_I2C_TRANSFER
 //#define DEBUG
@@ -705,234 +705,145 @@ static short  goodix_read_version(struct goodix_ts_data *ts)
 
 }
 
+/*******************************************************
+Function:
+	Touch down report function.
+Input:
+	ts:private data.
+	id:tracking id.
+	x:input x.
+	y:input y.
+	w:input weight.	
+Output:
+	None.
+*******************************************************/
+static void goodix_touch_down(struct goodix_ts_data* ts,s32 id,s32 x,s32 y,s32 w)
+{
+	pr_info("source data:ID:%d, X:%d, Y:%d, W:%d\n", id, x, y, w);
+	if(1 == exchange_x_y_flag){
+		swap(x, y);
+	}
+	if(1 == revert_x_flag){
+		x = SCREEN_MAX_HEIGHT - x;
+	}
+	if(1 == revert_y_flag){
+		y = SCREEN_MAX_WIDTH - y;
+	}
+	pr_info("report data:ID:%d, X:%d, Y:%d, W:%d\n", id, x, y, w);
+	input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x);
+	input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y);
+	input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, w);
+	input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, w);
+	input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, id);
+	input_mt_sync(ts->input_dev);
+}
+/*******************************************************
+Function:
+	Touch up report function.
+Input:
+	ts:private data.	
+Output:
+	None.
+*******************************************************/
+static void goodix_touch_up(struct goodix_ts_data* ts)
+{
+	input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+	input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0);
+	input_mt_sync(ts->input_dev);
+}
 
 /*******************************************************
 
 ********************************************************/
 static void goodix_ts_work_func(struct work_struct *work)
 {
-	uint8_t  touch_data[3] = {READ_TOUCH_ADDR_H,READ_TOUCH_ADDR_L,0};
-	uint8_t  point_data[8*MAX_FINGER_NUM+2]={ 0 };
-	static uint8_t   finger_last[MAX_FINGER_NUM+1]={0};		//
-	uint8_t  finger_current[MAX_FINGER_NUM+1] = {0};		//
-	uint8_t  coor_data[6*MAX_FINGER_NUM] = {0};			//
+	u8* coor_data = NULL;
+	u8  point_data[2 + 2 + 5 * MAX_FINGER_NUM + 1]={READ_TOUCH_ADDR_H,READ_TOUCH_ADDR_L};
+	u8  check_sum = 0;
+	u8  touch_num = 0;
+	u8  finger = 0;
+	u8  key_value = 0;
+	s32 input_x = 0;
+	s32 input_y = 0;
+	s32 input_w = 0;
+	s32 idx = 0;
+	s32 ret = -1;
+	struct goodix_ts_data *ts = NULL;
 
-	uint8_t  finger = 0;
-#ifdef HAVE_TOUCH_KEY
-	uint8_t  key = 0;
-	static uint8_t  last_key = 0;
-	uint8_t  key_data[3] ={READ_KEY_ADDR_H,READ_KEY_ADDR_L,0};
-#endif
-	unsigned int  count = 0;
-	unsigned int position = 0;
-	int ret=-1;
-	int tmp = 0;
-	int temp = 0;
-	uint16_t *coor_point = 0;
-	static int x_corrdinate = 0;
-	static int y_corrdinate = 0;
+    pr_info("%s: %s, %d. \n", __FILE__, __func__, __LINE__);
 
-	struct goodix_ts_data *ts = container_of(work, struct goodix_ts_data, work);
+	ts = container_of(work, struct goodix_ts_data, work);
 
-#ifdef DEBUG
-    printk("int count :%d\n", ++int_count);
-    printk("ready?:%d\n", raw_data_ready);
-#endif
-    if (RAW_DATA_ACTIVE == raw_data_ready)
-	{
-	    raw_data_ready = RAW_DATA_READY;
-#ifdef DEBUG
-	    printk("ready!\n");
-#endif
-	   // if(ts->use_irq)
-	//	    enable_irq(ts->client->irq);
-	 //   return;
+	ret = i2c_read_bytes(ts->client, point_data, 10);
+	finger = point_data[2];
+	touch_num = (finger & 0x01) + !!(finger & 0x02) + !!(finger & 0x04) + !!(finger & 0x08) + !!(finger & 0x10);
+	if (touch_num > 1){
+		u8 buf[25];
+		buf[0] = READ_TOUCH_ADDR_H;
+		buf[1] = READ_TOUCH_ADDR_L + 8;
+		ret = i2c_read_bytes(ts->client, buf, 5 * (touch_num - 1) + 2);
+		memcpy(&point_data[10], &buf[2], 5 * (touch_num - 1));
+	}
+	i2c_end_cmd(ts);
+
+	if (ret <= 0){
+		printk("%s:I2C read error!",__func__);
+		goto exit_work_func;
 	}
 
-
-	i2c_pre_cmd(ts);
-#ifndef INT_PORT
-COORDINATE_POLL:
-#endif
-	if( tmp > 9) {
-		dev_info(&(ts->client->dev), "Because of transfer error,touchscreen stop working.\n");
-		goto XFER_ERROR ;
+	if((finger & 0xC0) != 0x80){
+		pr_info("%s: %s, %d. Data not ready \n", __FILE__, __func__, __LINE__);
+		goto exit_work_func;
 	}
 
-	ret=i2c_read_bytes(ts->client, touch_data,sizeof(touch_data)/sizeof(touch_data[0]));  //
-	if(ret <= 0) {
-		dev_err(&(ts->client->dev),"I2C transfer error. Number:%d ,%s--%d\n", ret,__func__,__LINE__);
-		ts->bad_data = 1;
-		tmp ++;
-		ts->retry++;
-	#ifndef INT_PORT
-		goto COORDINATE_POLL;
-	#else
-		goto XFER_ERROR;
-	#endif
-	}
-
-#ifdef HAVE_TOUCH_KEY
-	ret=i2c_read_bytes(ts->client, key_data,sizeof(key_data)/sizeof(key_data[0]));  //
-	if(ret <= 0) {
-		dev_err(&(ts->client->dev),"I2C transfer error. Number:%d,%s--%d\n", ret,__func__,__LINE__);
-		ts->bad_data = 1;
-		tmp ++;
-		ts->retry++;
-	#ifndef INT_PORT
-		goto COORDINATE_POLL;
-	#else
-		goto XFER_ERROR;
-	#endif
-	}
-	key = key_data[2]&0x0f;
-#endif
-
-	if(ts->bad_data)
-		//TODO:Is sending config once again (to reset the chip) useful?
-		msleep(20);
-
-	if(touch_data[2] == 0x0f)
-       {
-       //pr_info("%s: %s, %d. \n", __FILE__, __func__, __LINE__);
-            goodix_init_panel(ts);
-            goto DATA_NO_READY;
-        }
-
-	if((touch_data[2]&0x30)!=0x20)
-	{
-		goto DATA_NO_READY;
-	}
-
-	ts->bad_data = 0;
-
-	finger = touch_data[2]&0x0f;
-	if(finger != 0)
-	{
-		point_data[0] = READ_COOR_ADDR_H;		//read coor high address
-		point_data[1] = READ_COOR_ADDR_L;		//read coor low address
-		ret=i2c_read_bytes(ts->client, point_data, finger*8+2);
-		if(ret <= 0)
-		{
-			dev_err(&(ts->client->dev),"I2C transfer error. Number:%d,%s--%d\n", ret,__func__,__LINE__);
-			ts->bad_data = 1;
-			tmp ++;
-			ts->retry++;
-		#ifndef INT_PORT
-			goto COORDINATE_POLL;
-		#else
-			goto XFER_ERROR;
-		#endif
+	key_value = point_data[3]&0x0f; // 1, 2, 4, 8
+	if ((key_value & 0x0f) == 0x0f){
+		if (!goodix_init_panel(ts)){
+			printk("%s:Reload config failed!\n",__func__);
 		}
+		goto exit_work_func;
+	}
 
-		for(position=2; position<((finger-1)*8+2+1); position += 8)
-		{
-			temp = point_data[position];
-			if(temp<(MAX_FINGER_NUM+1))
-			{
-				finger_current[temp] = 1;
-				for(count=0; count<6; count++)
-				{
-					coor_data[(temp-1)*6+count] = point_data[position+1+count];	//
-				}
+	coor_data = &point_data[4];
+	check_sum = 0;
+	for ( idx = 0; idx < 5 * touch_num; idx++){
+		check_sum += coor_data[idx];
+	}
+	if (check_sum != coor_data[5 * touch_num]){
+		printk("%s:Check sum error!",__func__);
+		goto exit_work_func;
+	}
+
+	if (touch_num){
+		  pr_info("%s: %s, %d. touch_num=%d\n", __FILE__, __func__, __LINE__, touch_num);
+		s32 pos = 0;
+
+		for (idx = 0; idx < MAX_FINGER_NUM; idx++){
+			if (!(finger & (0x01 << idx))){
+			        continue;
 			}
-			else
-			{
-				dev_err(&(ts->client->dev), "Track Id error:%d\n ", temp);
-				ts->bad_data = 1;
-				tmp ++;
-				ts->retry++;
-				#ifndef INT_PORT
-					goto COORDINATE_POLL;
-				#else
-					goto XFER_ERROR;
-				#endif
-			}
+			input_x  = coor_data[pos] << 8;
+			input_x |= coor_data[pos + 1];
+
+			input_y  = coor_data[pos + 2] << 8;
+			input_y |= coor_data[pos + 3];
+
+			input_w  = coor_data[pos + 4];
+
+			pos += 5;
+
+			goodix_touch_down(ts, idx, input_x, input_y, input_w);
 		}
-		//coor_point = (uint16_t *)coor_data;
-
+	}else{
+		  pr_info("%s: %s, %d. Touch Release\n", __FILE__, __func__, __LINE__);
+		goodix_touch_up(ts);
 	}
-
-	else
-	{
-		for(position=1;position < MAX_FINGER_NUM+1; position++)
-		{
-			finger_current[position] = 0;
-		}
-	}
-	coor_point = (uint16_t *)coor_data;
-	for(position=1;position < MAX_FINGER_NUM+1; position++)
-	{
-		if((finger_current[position] == 0)&&(finger_last[position] != 0))
-			{
-				input_report_abs(ts->input_dev, ABS_MT_POSITION_X, 0);
-				input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, 0);
-				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
-	//			input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0);
-				input_mt_sync(ts->input_dev);
-			}
-		else if(finger_current[position])
-			{
-				x_corrdinate = *(coor_point+3*(position-1)+1);
-				y_corrdinate = *(coor_point+3*(position-1));
-				if(revert_x_flag){
-					x_corrdinate = screen_max_x - x_corrdinate;
-				}
-
-				if(revert_y_flag){
-					y_corrdinate = screen_max_y - y_corrdinate;
-				}
-
-				if(exchange_x_y_flag){
-					swap(x_corrdinate, y_corrdinate);
-				}
-				input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x_corrdinate);  //can change x-y!!!
-				input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y_corrdinate);
-
-				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR,1);
-				//input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, finger_list.pointer[0].pressure);
-				input_mt_sync(ts->input_dev);
-			//	input_report_abs(ts->input_dev, ABS_X, finger_list.pointer[0].x);
-			//	input_report_abs(ts->input_dev, ABS_Y, finger_list.pointer[0].y)
-			//	input_report_abs(ts->input_dev, ABS_PRESSURE, finger_list.pointer[0].pressure);
-			//	input_sync(ts->input_dev);
-			//	printk("%d*",(*(coor_point+3*(position-1)))*SCREEN_MAX_HEIGHT/(TOUCH_MAX_HEIGHT));
-			//	printk("%d*",(*(coor_point+3*(position-1)+1))*SCREEN_MAX_WIDTH/(TOUCH_MAX_WIDTH));
-			//	printk("\n");
-			}
-
-	}
+//input_report_key(ts->input_dev, BTN_TOUCH, (touch_num || key_value));
 	input_sync(ts->input_dev);
 
-	for(position=1;position<MAX_FINGER_NUM+1; position++)
-	{
-		finger_last[position] = finger_current[position];
-	}
-
-#ifdef HAVE_TOUCH_KEY
-	if((last_key == 0)&&(key == 0))
-		;
-	else
-	{
-		for(count = 0; count < 4; count++)
-		{
-			input_report_key(ts->input_dev, touch_key_array[count], !!(key&(0x01<<count)));
-		}
-	}
-	last_key = key;
-#endif
-
-DATA_NO_READY:
-XFER_ERROR:
-	i2c_end_cmd(ts);
-	if(ts->use_irq){
-//	    enable_irq(ts->client->irq);
-        reg_val = readl(gpio_addr + PIO_INT_CTRL_OFFSET);
-        reg_val |=(1<<CTP_IRQ_NO);
-        writel(reg_val,gpio_addr + PIO_INT_CTRL_OFFSET);
-	}
+exit_work_func:
+	return;
 }
-
 /*******************************************************
 
 ********************************************************/
