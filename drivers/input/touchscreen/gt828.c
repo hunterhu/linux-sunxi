@@ -48,7 +48,7 @@
 //#define DEBUG
 
 static int reg_val;
-const char *f3x_ts_name="gt818_ts";
+const char *f3x_ts_name="gt828";
 static struct workqueue_struct *goodix_wq;
 
 
