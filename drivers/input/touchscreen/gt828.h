@@ -18,7 +18,7 @@
 #include <linux/input.h>
 
 //*************************TouchScreen Work Part*****************************
-#define GOODIX_I2C_NAME "gt82x"
+#define GOODIX_I2C_NAME "gt828"
 #define GUITAR_GT80X
 #define GT801_PLUS
 #define GT801_NUVOTON
