@@ -589,13 +589,13 @@ static short get_chip_version( unsigned int sw_ver )
     if ( (sw_ver&0xff) < TPD_CHIP_VERSION_C_FIRMWARE_BASE )
 	return TPD_GT818_VERSION_B;
    else if ( (sw_ver&0xff) < TPD_CHIP_VERSION_D1_FIRMWARE_BASE )
-   	return TPD_GT818_VERSION_C;
+	return TPD_GT818_VERSION_C;
    else if((sw_ver&0xff) < TPD_CHIP_VERSION_E_FIRMWARE_BASE)
-   	return TPD_GT818_VERSION_D1;
+	return TPD_GT818_VERSION_D1;
    else if((sw_ver&0xff) < TPD_CHIP_VERSION_D2_FIRMWARE_BASE)
-   	return TPD_GT818_VERSION_E;
+	return TPD_GT818_VERSION_E;
    else
-   	return TPD_GT818_VERSION_D2;
+	return TPD_GT818_VERSION_D2;
 
 }
 /*******************************************************
@@ -607,7 +607,7 @@ static int goodix_init_panel(struct goodix_ts_data *ts)
 {
 	int ret=-1;
 	int i = 0;
-	uint8_t info_1024x768[] = {0x00, 0x04}; 
+	uint8_t info_1024x768[] = {0x00, 0x04};
 	static uint8_t data_info1[] = {
 		0x0F,0x80,
 		0x00,0x0F,0x01,0x10,0x02,0x11,0x03,0x12,
@@ -625,11 +625,11 @@ static int goodix_init_panel(struct goodix_ts_data *ts)
 		0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 		0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01
 	};
-	 
+
 	data_info1[72] = info_1024x768[0];
 	data_info1[73] = info_1024x768[1];
 
-	ret=i2c_write_bytes(ts->client,data_info1, 114); 
+	ret=i2c_write_bytes(ts->client,data_info1, 114);
 
 	i2c_end_cmd(ts);
 	msleep(10);
@@ -988,7 +988,7 @@ static int goodix_ts_power(struct goodix_ts_data * ts, int on)
 				else
 				//gpio_direction_input(INT_PORT);
 				//Config CTP_IRQ_NO as input
-	  			gpio_set_one_pin_io_status(gpio_int_hdle,0, "ctp_int_port");
+				gpio_set_one_pin_io_status(gpio_int_hdle,0, "ctp_int_port");
 
 			#else
 				//gpio_direction_output(SHUTDOWN_PORT,0);
@@ -1175,7 +1175,7 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	//gpio_set_one_pin_io_status(gpio_wakeup_hdle, 1, "ctp_wakeup");
         //gpio_write_one_pin_value(gpio_wakeup_hdle, 0, "ctp_wakeup");
 #ifdef AUTO_UPDATE_GT818
-  	  pr_info("%s: %s, %d. \n", __FILE__, __func__, __LINE__);
+	  pr_info("%s: %s, %d. \n", __FILE__, __func__, __LINE__);
             i2c_pre_cmd(ts);
             goodix_read_version(ts);
             i2c_end_cmd(ts);
@@ -1197,7 +1197,7 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 
 	ts->input_dev->evbit[0] = BIT_MASK(EV_SYN) | BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS) ;
 	ts->input_dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
-	ts->input_dev->absbit[0] = BIT(ABS_X) | BIT(ABS_Y) | BIT(ABS_PRESSURE); 			// absolute coor (x,y)
+	ts->input_dev->absbit[0] = BIT(ABS_X) | BIT(ABS_Y) | BIT(ABS_PRESSURE);			// absolute coor (x,y)
 #ifdef HAVE_TOUCH_KEY
 	for(retry = 0; retry < MAX_KEY_NUM; retry++)
 	{
@@ -1270,7 +1270,7 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		hrtimer_start(&ts->timer, ktime_set(1, 0), HRTIMER_MODE_REL);
 	}
 
-    	//pr_info("%s: %s, %d. \n", _, __func__, __LINE__);
+	//pr_info("%s: %s, %d. \n", _, __func__, __LINE__);
 	goodix_read_version(ts);
 
 	//pr_info("%s: %s, %d. \n", _, __func__, __LINE__);
@@ -1378,7 +1378,7 @@ static int goodix_ts_remove(struct i2c_client *client)
 	#ifdef INT_PORT
 		//gpio_direction_input(INT_PORT);
 		//gpio_free(INT_PORT);
- 		gpio_set_one_pin_io_status(gpio_int_hdle, 0, "ctp_int_port");
+		gpio_set_one_pin_io_status(gpio_int_hdle, 0, "ctp_int_port");
 
 	#endif
 //		free_irq(client->irq, ts);
@@ -1525,7 +1525,7 @@ static unsigned int Reflect(unsigned long int ref, char ch)
 #endif
 
 /*---------------------------------------------------------------------------------------------------------*/
-/*  CRC Check Program INIT								                                           		   */
+/*  CRC Check Program INIT										   */
 /*---------------------------------------------------------------------------------------------------------*/
 /*
 static void init_crc32_table(void)
@@ -1555,7 +1555,7 @@ static void init_crc32_table(void)
 }
 */
 /*---------------------------------------------------------------------------------------------------------*/
-/*  CRC main Program									                                           		   */
+/*  CRC main Program											   */
 /*---------------------------------------------------------------------------------------------------------*/
 /*
 static void GenerateCRC32(unsigned char * buf, unsigned int len)
@@ -1659,7 +1659,7 @@ static int goodix_update_write(struct file *filp, const char __user *buff, unsig
 
 	    for(retry=0; retry<3; retry++)
 	    {
-	    	//pr_info("%s: %s, %d. \n", _, __func__, __LINE__);
+		//pr_info("%s: %s, %d. \n", _, __func__, __LINE__);
 		    ret=goodix_init_panel(ts);
 		    printk(KERN_INFO"the config ret is :%d\n",ret);
 
@@ -1672,14 +1672,14 @@ static int goodix_update_write(struct file *filp, const char __user *buff, unsig
 
            if(ts->use_irq){
                 //s3c_gpio_cfgpin(INT_PORT, INT_CFG);	//Set IO port as interrupt port
-                	reg_val = readl(gpio_addr + PHO_CFG2_OFFSET);
-        		reg_val &=(~(1<<20));
-        		reg_val |=(3<<21);
-        		writel(reg_val,gpio_addr + PHO_CFG2_OFFSET);
+	reg_val = readl(gpio_addr + PHO_CFG2_OFFSET);
+		reg_val &=(~(1<<20));
+		reg_val |=(3<<21);
+		writel(reg_val,gpio_addr + PHO_CFG2_OFFSET);
                     }
-	    		else
+			else
                 //gpio_direction_input(INT_PORT);
-	  		gpio_set_one_pin_io_status(gpio_int_hdle,0, "ctp_int_port");
+			gpio_set_one_pin_io_status(gpio_int_hdle,0, "ctp_int_port");
 
            i2c_end_cmd(ts);
 
@@ -1706,9 +1706,9 @@ static int goodix_update_write(struct file *filp, const char __user *buff, unsig
 			    printk(KERN_INFO"Read raw data!\n");
 			    ts->read_mode = MODE_RD_RAW;
 			}
-        		else if (cmd[1] == CMD_READ_CHIP_TYPE)
+		else if (cmd[1] == CMD_READ_CHIP_TYPE)
 			{
-		    	printk(KERN_INFO"Read chip type!\n");
+			printk(KERN_INFO"Read chip type!\n");
 			ts->read_mode = MODE_RD_CHIP_TYPE;
 			}
             return 1;
@@ -2331,18 +2331,18 @@ int  gt818_downloader( struct goodix_ts_data *ts,  unsigned char * data, unsigne
 //            goto exit_downloader;
 //        }
 	if( ((ts->version&0xf000) | (fw_info->version&0xf000)) == 0)   //
-  	{
- 		 if ( (ts->version&0x1ff) >= (fw_info->version&0x1ff) )
-  		{
-  			TPD_DOWNLOADER_DEBUG("No need to upgrade\n");
+	{
+		 if ( (ts->version&0x1ff) >= (fw_info->version&0x1ff) )
+		{
+			TPD_DOWNLOADER_DEBUG("No need to upgrade\n");
 			goto exit_downloader;
 		}
- 	 }
+	 }
       else
-  	{
-  		if(((ts->version&0xf000) & (fw_info->version&0xf000)) == 0xf000)    //
-  		{
-  			if( (ts->version&0xff) > (fw_info->version&0xff))
+	{
+		if(((ts->version&0xf000) & (fw_info->version&0xf000)) == 0xf000)    //
+		{
+			if( (ts->version&0xff) > (fw_info->version&0xff))
 			{
 				TPD_DOWNLOADER_DEBUG("No need to upgrade\n");
 				goto exit_downloader;
@@ -2469,7 +2469,7 @@ exit_downloader:
        // msleep(1);
   //      gpio_free(INT_PORT);
   //      s3c_gpio_setpull(INT_PORT, S3C_GPIO_PULL_NONE);
-  		reg_val = readl(gpio_addr + PHO_PULL1_OFFSET);
+		reg_val = readl(gpio_addr + PHO_PULL1_OFFSET);
         reg_val &=(~(3<<10));
         writel(reg_val,gpio_addr + PHO_PULL1_OFFSET);
 
