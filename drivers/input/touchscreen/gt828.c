@@ -605,6 +605,7 @@ notice: init panel need to be complete within 200ms.
 *******************************************************/
 static int goodix_init_panel(struct goodix_ts_data *ts)
 {
+	pr_info("%s: %s, %d. \n", _, __func__, __LINE__);
 	int ret=-1;
 	uint8_t info_1024x768[] = {0x00, 0x04};
 	static uint8_t data_info1[] = {

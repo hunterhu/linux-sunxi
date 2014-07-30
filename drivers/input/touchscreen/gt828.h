@@ -200,7 +200,7 @@ struct goodix_ts_data {
 //*****************************End of Part II*********************************
 
 //*************************Firmware Update part*******************************
-#define AUTO_UPDATE_GT818             //如果定义了则上电会自动判断是否需要升级
+//#define AUTO_UPDATE_GT818             //如果定义了则上电会自动判断是否需要升级
 
 #define CONFIG_TOUCHSCREEN_GOODIX_IAP
 #ifdef CONFIG_TOUCHSCREEN_GOODIX_IAP
