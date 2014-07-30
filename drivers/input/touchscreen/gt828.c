@@ -657,7 +657,7 @@ static int goodix_init_panel(struct goodix_ts_data *ts)
 
        if((ts->version&0xff) < TPD_CHIP_VERSION_D1_FIRMWARE_BASE)
        {
-            dev_info(&ts->client->dev," (Hunter)Guitar Version: C\n");
+            dev_info(&ts->client->dev," Guitar Version: C\n");
             //config_info_c[57] = (config_info_c[57]&0xf7)|(INT_TRIGGER<<3);
             ret=i2c_write_bytes(ts->client,config_info_c, (sizeof(config_info_c)/sizeof(config_info_c[0])));
         }

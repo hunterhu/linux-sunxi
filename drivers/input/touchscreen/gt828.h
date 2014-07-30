@@ -83,7 +83,7 @@ enum
 #define INT_TRIGGER		1	   // 1=rising 0=falling
 #define POLL_TIME		10	//actual query spacing interval:POLL_TIME+6
 
-#define GOODIX_MULTI_TOUCH
+//#define GOODIX_MULTI_TOUCH
 #ifdef GOODIX_MULTI_TOUCH
 	#define MAX_FINGER_NUM	5
 #else
