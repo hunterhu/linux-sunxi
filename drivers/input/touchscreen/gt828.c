@@ -774,9 +774,7 @@ static void goodix_ts_work_func(struct work_struct *work)
 exit_work_func:
 	return;
 }
-/*******************************************************
 
-********************************************************/
 static enum hrtimer_restart goodix_ts_timer_func(struct hrtimer *timer)
 {
 	struct goodix_ts_data *ts = container_of(timer, struct goodix_ts_data, timer);
@@ -785,17 +783,11 @@ static enum hrtimer_restart goodix_ts_timer_func(struct hrtimer *timer)
 	return HRTIMER_NORESTART;
 }
 
-/*******************************************************
-
-********************************************************/
 static irqreturn_t goodix_ts_irq_handler(int irq, void *dev_id)
 {
 	struct goodix_ts_data *ts = dev_id;
 
-	//printk(KERN_INFO"-------------------ts_irq_handler------------------\n");
-	//disable_irq_nosync(ts->client->irq);
 	reg_val = readl(gpio_addr + PIO_INT_STAT_OFFSET);
-
 	if(reg_val&(1<<(CTP_IRQ_NO)))
 	{
 		print_int_info("%s: %d. ==CTP_IRQ_NO=\n", __func__, __LINE__);
@@ -808,7 +800,6 @@ static irqreturn_t goodix_ts_irq_handler(int irq, void *dev_id)
 	    print_int_info("Other Interrupt\n");
 	    return IRQ_NONE;
 	}
-
 
 	return IRQ_HANDLED;
 }
