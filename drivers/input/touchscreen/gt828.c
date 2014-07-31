@@ -704,9 +704,11 @@ static void goodix_ts_work_func(struct work_struct *work)
 
 	ts = container_of(work, struct goodix_ts_data, work);
 
+	/*Read the first 10 first, if touch_num > 1, read more, see line 712 */
 	ret = i2c_read_bytes(ts->client, point_data, 10);
 	finger = point_data[2];
 	touch_num = (finger & 0x01) + !!(finger & 0x02) + !!(finger & 0x04) + !!(finger & 0x08) + !!(finger & 0x10);
+    pr_info("%s: %s, %d: tuoch_num = %d \n", __FILE__, __func__, __LINE__, touch_num);
 	if (touch_num > 1){
 		u8 buf[25];
 		buf[1] = READ_TOUCH_ADDR_L + 8;
@@ -744,8 +746,6 @@ static void goodix_ts_work_func(struct work_struct *work)
 	}
 
 	if (touch_num){
-		  pr_info("%s: %s, %d. touch_num=%d\n", __FILE__, __func__, __LINE__, touch_num);
-
 		for (idx = 0; idx < MAX_FINGER_NUM; idx++){
 			if (!(finger & (0x01 << idx))){
 			        continue;
@@ -760,13 +760,15 @@ static void goodix_ts_work_func(struct work_struct *work)
 
 			pos += 5;
 
+			pr_info("%s: %s, %d. Touch Down\n", __FILE__, __func__, __LINE__);
 			goodix_touch_down(ts, idx, input_x, input_y, input_w);
 		}
 	}else{
-		  pr_info("%s: %s, %d. Touch Release\n", __FILE__, __func__, __LINE__);
+		pr_info("%s: %s, %d. Touch Up\n", __FILE__, __func__, __LINE__);
 		goodix_touch_up(ts);
 	}
-//input_report_key(ts->input_dev, BTN_TOUCH, (touch_num || key_value));
+	/* Until support touch keys */
+    //input_report_key(ts->input_dev, BTN_TOUCH, (touch_num || key_value));
 	input_sync(ts->input_dev);
 
 exit_work_func:
