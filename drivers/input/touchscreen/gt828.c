@@ -482,6 +482,18 @@ int ctp_detect(struct i2c_client *client, struct i2c_board_info *info)
 		return -ENODEV;
 	}
 
+	if(twi_id == adapter->nr)
+	{
+		pr_info("%s: Detected chip %s at adapter %d, address 0x%02x\n",
+			 __func__, CTP_NAME, i2c_adapter_id(adapter), client->addr);
+
+		strlcpy(info->type, CTP_NAME, I2C_NAME_SIZE);
+		return 0;
+	}else{
+		return -ENODEV;
+	}
+
+#if 0
 	if(twi_id == adapter->nr){
 		i2c_read_bytes(client,read_chip_value,3);
 		pr_info("addr:0x%x,chip_id_value:0x%x\n",client->addr,read_chip_value[2]);
@@ -496,6 +508,7 @@ int ctp_detect(struct i2c_client *client, struct i2c_board_info *info)
 	}else{
 		return -ENODEV;
 	}
+#endif
 }
 
 static struct ctp_platform_ops ctp_ops = {
