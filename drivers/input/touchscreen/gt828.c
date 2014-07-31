@@ -16,7 +16,6 @@
 #include <asm/irq.h>
 #include <linux/syscalls.h>
 #include <linux/reboot.h>
-#include <linux/proc_fs.h>
 #include <linux/vmalloc.h>
 #include <linux/fs.h>
 #include <linux/string.h>
@@ -37,7 +36,6 @@
 #endif
 
 #include "gt828.h"
-#include "gt828_update.h"
 #include "ctp_platform_ops.h"
 
 #define FOR_TSLIB_TEST
@@ -53,7 +51,6 @@ static struct workqueue_struct *goodix_wq;
 
 
 struct i2c_client * i2c_connect_client = NULL;
-static struct proc_dir_entry *goodix_proc_entry;
 static short  goodix_read_version(struct goodix_ts_data *ts);
 
 
@@ -62,32 +59,23 @@ static void goodix_ts_early_suspend(struct early_suspend *h);
 static void goodix_ts_late_resume(struct early_suspend *h);
 #endif
 
-int  gt818_downloader( struct goodix_ts_data *ts, unsigned char * data,unsigned char * path );
-unsigned int oldcrc32 = 0xFFFFFFFF;
-unsigned int crc32_table[256];
-unsigned int raw_data_ready = RAW_DATA_NON_ACTIVE;
-
 #ifdef DEBUG
 int sum = 0;
 int access_count = 0;
 int int_count = 0;
 #endif
 
-///////////////////////////////////////////////
 //specific tp related macro: need be configured for specific tp
 #define CTP_IRQ_NO			(gpio_int_info[0].port_num)
 
 #define CTP_IRQ_MODE			(POSITIVE_EDGE)
-#define CTP_NAME			GOODIX_I2C_NAME
+#define CTP_NAME			    GOODIX_I2C_NAME
 #define TS_RESET_LOW_PERIOD		(15)
-#define TS_INITIAL_HIGH_PERIOD		(15)
+#define TS_INITIAL_HIGH_PERIOD  (15)
 #define TS_WAKEUP_LOW_PERIOD	(100)
 #define TS_WAKEUP_HIGH_PERIOD	(100)
-#define TS_POLL_DELAY			(10)	/* ms delay between samples */
-#define TS_POLL_PERIOD			(10)	/* ms delay between samples */
 #define SCREEN_MAX_HEIGHT		(screen_max_x)
 #define SCREEN_MAX_WIDTH		(screen_max_y)
-#define PRESS_MAX			(255)
 
 static void* __iomem gpio_addr = NULL;
 static int gpio_int_hdle = 0;
@@ -579,25 +567,6 @@ static int i2c_end_cmd(struct goodix_ts_data *ts)
 	return ret;
 }
 
-/*
-
-*/
-static short get_chip_version( unsigned int sw_ver )
-{
-    //pr_info("%s: %s, %d. \n", _, __func__, __LINE__);
-    if ( (sw_ver&0xff) < TPD_CHIP_VERSION_C_FIRMWARE_BASE )
-	return TPD_GT818_VERSION_B;
-   else if ( (sw_ver&0xff) < TPD_CHIP_VERSION_D1_FIRMWARE_BASE )
-	return TPD_GT818_VERSION_C;
-   else if((sw_ver&0xff) < TPD_CHIP_VERSION_E_FIRMWARE_BASE)
-	return TPD_GT818_VERSION_D1;
-   else if((sw_ver&0xff) < TPD_CHIP_VERSION_D2_FIRMWARE_BASE)
-	return TPD_GT818_VERSION_E;
-   else
-	return TPD_GT818_VERSION_D2;
-
-}
-
 /*******************************************************
 notice: init panel need to be complete within 200ms.
 	so, i2c transfer clk more faster more better
@@ -768,6 +737,7 @@ static void goodix_ts_work_func(struct work_struct *work)
 	s32 input_w = 0;
 	s32 idx = 0;
 	s32 ret = -1;
+	s32 pos = 0;
 	struct goodix_ts_data *ts = NULL;
 
     pr_info("%s: %s, %d. \n", __FILE__, __func__, __LINE__);
@@ -779,7 +749,6 @@ static void goodix_ts_work_func(struct work_struct *work)
 	touch_num = (finger & 0x01) + !!(finger & 0x02) + !!(finger & 0x04) + !!(finger & 0x08) + !!(finger & 0x10);
 	if (touch_num > 1){
 		u8 buf[25];
-		buf[0] = READ_TOUCH_ADDR_H;
 		buf[1] = READ_TOUCH_ADDR_L + 8;
 		ret = i2c_read_bytes(ts->client, buf, 5 * (touch_num - 1) + 2);
 		memcpy(&point_data[10], &buf[2], 5 * (touch_num - 1));
@@ -816,7 +785,6 @@ static void goodix_ts_work_func(struct work_struct *work)
 
 	if (touch_num){
 		  pr_info("%s: %s, %d. touch_num=%d\n", __FILE__, __func__, __LINE__, touch_num);
-		s32 pos = 0;
 
 		for (idx = 0; idx < MAX_FINGER_NUM; idx++){
 			if (!(finger & (0x01 << idx))){
@@ -969,8 +937,6 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	int err = 0;
 	int retry=0;
 
-	//unsigned short version_temp = 0;
-	unsigned char update_path[1] = {0};
 #if defined(NO_DEFAULT_ID) && defined(INT_PORT)
 	uint8_t goodix_id[3] = {0,0xff,0};
 #endif
@@ -1126,19 +1092,6 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 
 	//gpio_set_one_pin_io_status(gpio_wakeup_hdle, 1, "ctp_wakeup");
         //gpio_write_one_pin_value(gpio_wakeup_hdle, 0, "ctp_wakeup");
-#ifdef AUTO_UPDATE_GT818
-	  pr_info("%s: %s, %d. \n", __FILE__, __func__, __LINE__);
-            i2c_pre_cmd(ts);
-            goodix_read_version(ts);
-            i2c_end_cmd(ts);
-    //pr_info("%s: %s, %d. \n", _, __func__, __LINE__);
-            ret = gt818_downloader( ts, goodix_gt818_firmware, update_path);
-            if(ret < 0)
-            {
-                dev_err(&client->dev, "Warnning: GT818 update might be ERROR!\n");
-                //goto err_input_dev_alloc_failed;
-            }
-#endif
 
 	ts->input_dev = input_allocate_device();
 	if (ts->input_dev == NULL) {
@@ -1251,24 +1204,6 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	register_early_suspend(&ts->early_suspend);
 #endif
 
-
-#ifdef CONFIG_TOUCHSCREEN_GOODIX_IAP
-	goodix_proc_entry = create_proc_entry("goodix-update", 0666, NULL);
-	if(goodix_proc_entry == NULL)
-	{
-		dev_info(&client->dev, "Couldn't create proc entry!\n");
-		ret = -ENOMEM;
-		goto err_create_proc_entry;
-	}
-	else
-	{
-		dev_info(&client->dev, "Create proc entry success!\n");
-		goodix_proc_entry->write_proc = goodix_update_write;
-		goodix_proc_entry->read_proc = goodix_update_read;
-//		goodix_proc_entry->owner =THIS_MODULE;
-	}
-#endif
-
 	i2c_end_cmd(ts);
 	 //pr_info("%s: %s, %d. \n", _, __func__, __LINE__);
 	dev_info(&client->dev,"Start %s in %s mode\n",
@@ -1308,7 +1243,6 @@ err_i2c_failed:
 	kfree(ts);
 err_alloc_data_failed:
 err_check_functionality_failed:
-err_create_proc_entry:
 	return ret;
 }
 
@@ -1321,9 +1255,6 @@ static int goodix_ts_remove(struct i2c_client *client)
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&ts->early_suspend);
-#endif
-#ifdef CONFIG_TOUCHSCREEN_GOODIX_IAP
-	remove_proc_entry("goodix-update", NULL);
 #endif
 	if (ts && ts->use_irq)
 	{
@@ -1418,916 +1349,6 @@ static void goodix_ts_late_resume(struct early_suspend *h)
 }
 #endif
 
-//******************************Begin of firmware update surpport*******************************
-#ifdef CONFIG_TOUCHSCREEN_GOODIX_IAP
-static struct file * update_file_open(char * path, mm_segment_t * old_fs_p)
-{
-	struct file * filp = NULL;
-	int errno = -1;
-
-	filp = filp_open(path, O_RDONLY, 0644);
-
-	if(!filp || IS_ERR(filp))
-	{
-		if(!filp)
-			errno = -ENOENT;
-		else
-			errno = PTR_ERR(filp);
-		printk(KERN_ERR "The update file for Guitar open error.\n");
-		return NULL;
-	}
-	*old_fs_p = get_fs();
-	set_fs(get_ds());
-
-	filp->f_op->llseek(filp,0,0);
-	return filp ;
-}
-
-static void update_file_close(struct file * filp, mm_segment_t old_fs)
-{
-	set_fs(old_fs);
-	if(filp)
-		filp_close(filp, NULL);
-}
-static int update_get_flen(char * path)
-{
-	struct file * file_ck = NULL;
-	mm_segment_t old_fs;
-	int length ;
-
-	file_ck = update_file_open(path, &old_fs);
-	if(file_ck == NULL)
-		return 0;
-
-	length = file_ck->f_op->llseek(file_ck, 0, SEEK_END);
-	//printk("File length: %d\n", length);
-	if(length < 0)
-		length = 0;
-	update_file_close(file_ck, old_fs);
-	return length;
-}
-
-static int goodix_update_write(struct file *filp, const char __user *buff, unsigned long len, void *data)
-{
-	unsigned char cmd[120];
-	int ret = -1;
-       int retry = 0;
-	static unsigned char update_path[60];
-	struct goodix_ts_data *ts;
-
-	ts = i2c_get_clientdata(i2c_connect_client);
-	if(ts==NULL)
-	{
-            printk(KERN_INFO"goodix write to kernel via proc file!@@@@@@\n");
-		return 0;
-	}
-
-	//printk(KERN_INFO"goodix write to kernel via proc file!@@@@@@\n");
-	if(copy_from_user(&cmd, buff, len))
-	{
-            printk(KERN_INFO"goodix write to kernel via proc file!@@@@@@\n");
-		return -EFAULT;
-	}
-	//printk(KERN_INFO"Write cmd is:%d,write len is:%ld\n",cmd[0], len);
-	switch(cmd[0])
-	{
-            case APK_UPDATE_TP:
-            printk(KERN_INFO"Write cmd is:%d,cmd arg is:%s,write len is:%ld\n",cmd[0], &cmd[1], len);
-            memset(update_path, 0, 60);
-            strncpy(update_path, cmd+1, 60);
-
-            ret = gt818_downloader( ts, goodix_gt818_firmware, update_path);
-
-             if(ret < 0)
-            {
-                printk(KERN_INFO"Warnning: GT818 update might be ERROR!\n");
-                return 0;
-            }
-
-            i2c_pre_cmd(ts);
-	     msleep(2);
-
-	    for(retry=0; retry<3; retry++)
-	    {
-		//pr_info("%s: %s, %d. \n", _, __func__, __LINE__);
-		    ret=goodix_init_panel(ts);
-		    printk(KERN_INFO"the config ret is :%d\n",ret);
-
-		    msleep(2);
-		    if(ret != 0)	//Initiall failed
-			    continue;
-		    else
-			    break;
-	    }
-
-           if(ts->use_irq){
-                //s3c_gpio_cfgpin(INT_PORT, INT_CFG);	//Set IO port as interrupt port
-	reg_val = readl(gpio_addr + PHO_CFG2_OFFSET);
-		reg_val &=(~(1<<20));
-		reg_val |=(3<<21);
-		writel(reg_val,gpio_addr + PHO_CFG2_OFFSET);
-                    }
-			else
-                //gpio_direction_input(INT_PORT);
-			gpio_set_one_pin_io_status(gpio_int_hdle,0, "ctp_int_port");
-
-           i2c_end_cmd(ts);
-
-	    if(ret != 0)
-            {
-		    ts->bad_data=1;
-		    return 1;
-	      }
-            return 1;
-
-            case APK_READ_FUN:							//functional command
-			if(cmd[1] == CMD_READ_VER)
-			{
-				printk(KERN_INFO"Read version!\n");
-				ts->read_mode = MODE_RD_VER;
-			}
-                    else if(cmd[1] == CMD_READ_CFG)
-			{
-				printk(KERN_INFO"Read config info!\n");
-				ts->read_mode = MODE_RD_CFG;
-			}
-			else if (cmd[1] == CMD_READ_RAW)
-			{
-			    printk(KERN_INFO"Read raw data!\n");
-			    ts->read_mode = MODE_RD_RAW;
-			}
-		else if (cmd[1] == CMD_READ_CHIP_TYPE)
-			{
-			printk(KERN_INFO"Read chip type!\n");
-			ts->read_mode = MODE_RD_CHIP_TYPE;
-			}
-            return 1;
-
-            case APK_WRITE_CFG:
-			printk(KERN_INFO"Begin write config info!Config length:%d\n",cmd[1]);
-			i2c_pre_cmd(ts);
-                    ret = i2c_write_bytes(ts->client, cmd+2, cmd[1]+2);
-                    i2c_end_cmd(ts);
-                    if(ret != 1)
-                    {
-                        printk("Write Config failed!return:%d\n",ret);
-                        return -1;
-                    }
-                    return 1;
-
-		default:
-			return 0;
-	}
-	return 0;
-}
-
-static int goodix_update_read( char *page, char **start, off_t off, int count, int *eof, void *data )
-{
-#ifdef DEBUG
-	int i;
-#endif
-	int ret = -1;
-	int len = 0;
-	int read_times = 0;
-	struct goodix_ts_data *ts;
-//	int len = 0;
-	unsigned char read_data[360] = {80, };
-
-	ts = i2c_get_clientdata(i2c_connect_client);
-	if(ts==NULL)
-		return 0;
-
-	printk("___READ__\n");
-	//read version data
-	if(ts->read_mode == MODE_RD_VER)	{
-		i2c_pre_cmd(ts);
-		ret = goodix_read_version(ts);
-		i2c_end_cmd(ts);
-		if(ret <= 0){
-			printk(KERN_INFO"Read version data failed!\n");
-			return 0;
-		}
-
-		read_data[1] = (char)(ts->version&0xff);
-		read_data[0] = (char)((ts->version>>8)&0xff);
-
-		printk(KERN_INFO"Gt818 ROM version is:%x%x\n", read_data[0],read_data[1]);
-		memcpy(page, read_data, 2);
-		//*eof = 1;
-		return 2;
-	}else if (ts->read_mode == MODE_RD_CHIP_TYPE){
-		page[0] = GT818;
-		return 1;
-	}else if(ts->read_mode == MODE_RD_CFG){
-
-		read_data[0] = 0x06;
-		read_data[1] = 0xa2;       // cfg start address
-		printk("read config addr is:%x,%x\n", read_data[0],read_data[1]);
-
-		len = 106;
-		i2c_pre_cmd(ts);
-		ret = i2c_read_bytes(ts->client, read_data, len+2);
-		i2c_end_cmd(ts);
-		if(ret <= 0){
-			printk(KERN_INFO"Read config info failed!\n");
-			return 0;
-		}
-
-		memcpy(page, read_data+2, len);
-		return len;
-	}else if (ts->read_mode == MODE_RD_RAW){
-#define TIMEOUT (-100)
-		int retry = 0;
-		if (raw_data_ready != RAW_DATA_READY){
-			raw_data_ready = RAW_DATA_ACTIVE;
-		}
-
-RETRY:
-		read_data[0] = 0x07;
-		read_data[1] = 0x11;
-		read_data[2] = 0x01;
-
-		ret = i2c_write_bytes(ts->client, read_data, 3);
-
-#ifdef DEBUG
-		sum += read_times;
-		printk("count :%d\n", ++access_count);
-		printk("A total of try times:%d\n", sum);
-#endif
-
-		read_times = 0;
-		while (RAW_DATA_READY != raw_data_ready){
-			msleep(4);
-
-			if (read_times++ > 10){
-				if (retry++ > 5){
-					return TIMEOUT;
-				}
-				goto RETRY;
-			}
-		}
-#ifdef DEBUG
-		printk("read times:%d\n", read_times);
-#endif
-		read_data[0] = 0x08;
-		read_data[1] = 0x80;       // raw data address
-
-		len = 160;
-
-		// msleep(4);
-
-		i2c_pre_cmd(ts);
-		ret = i2c_read_bytes(ts->client, read_data, len+2);
-		//      i2c_end_cmd(ts);
-
-		if(ret <= 0){
-			printk(KERN_INFO"Read raw data failed!\n");
-			return 0;
-		}
-
-		memcpy(page, read_data+2, len);
-
-		read_data[0] = 0x09;
-		read_data[1] = 0xC0;
-		//	i2c_pre_cmd(ts);
-		ret = i2c_read_bytes(ts->client, read_data, len+2);
-		i2c_end_cmd(ts);
-
-		if(ret <= 0){
-			printk(KERN_INFO"Read raw data failed!\n");
-			return 0;
-		}
-		memcpy(&page[160], read_data+2, len);
-
-#ifdef DEBUG
-		//**************
-		for (i = 0; i < 300; i++)
-		{
-			printk("%6x", page[i]);
-
-			if ((i+1) % 10 == 0)
-			{
-				printk("\n");
-			}
-		}
-		//********************/
-#endif
-		raw_data_ready = RAW_DATA_NON_ACTIVE;
-
-		return (2*len);
-
-	}
-
-	return -1;
-}
-#endif
-
-//********************************************************************************************
-static u8  is_equal( u8 *src , u8 *dst , int len )
-{
-    int i;
-
- //   for( i = 0 ; i < len ; i++ )
-  //  {
-        //printk(KERN_INFO"[%02X:%02X]\n", src[i], dst[i]);
- //   }
-
-    for( i = 0 ; i < len ; i++ )
-    {
-        if ( src[i] != dst[i] )
-        {
-            return 0;
-        }
-    }
-
-    return 1;
-}
-
-static  u8 gt818_nvram_store( struct goodix_ts_data *ts )
-{
-    int ret;
-    int i;
-    u8 inbuf[3] = {REG_NVRCS_H,REG_NVRCS_L,0};
-    //u8 outbuf[3] = {};
-    ret = i2c_read_bytes( ts->client, inbuf, 3 );
-
-    if ( ret < 0 )
-    {
-        return 0;
-    }
-
-    if ( ( inbuf[2] & BIT_NVRAM_LOCK ) == BIT_NVRAM_LOCK )
-    {
-        return 0;
-    }
-
-    inbuf[2] = (1<<BIT_NVRAM_STROE);		//store command
-
-    for ( i = 0 ; i < 300 ; i++ )
-    {
-        ret = i2c_write_bytes( ts->client, inbuf, 3 );
-
-        if ( ret < 0 )
-            break;
-    }
-
-    return ret;
-}
-
-static u8  gt818_nvram_recall( struct goodix_ts_data *ts )
-{
-    int ret;
-    u8 inbuf[3] = {REG_NVRCS_H,REG_NVRCS_L,0};
-
-    ret = i2c_read_bytes( ts->client, inbuf, 3 );
-
-    if ( ret < 0 )
-    {
-        return 0;
-    }
-
-    if ( ( inbuf[2]&BIT_NVRAM_LOCK) == BIT_NVRAM_LOCK )
-    {
-        return 0;
-    }
-
-    inbuf[2] = ( 1 << BIT_NVRAM_RECALL );		//recall command
-    ret = i2c_write_bytes( ts->client , inbuf, 3);
-    return ret;
-}
-
-static  int gt818_reset( struct goodix_ts_data *ts )
-{
-    int ret = 1;
-    u8 retry;
-
-    unsigned char outbuf[3] = {0,0xff,0};
-    unsigned char inbuf[3] = {0,0xff,0};
-    //outbuf[1] = 1;
-
-    //gpio_direction_output(SHUTDOWN_PORT,0);
-    gpio_set_one_pin_io_status(gpio_wakeup_hdle, 1, "ctp_wakeup");
-    gpio_write_one_pin_value(gpio_wakeup_hdle, 0, "ctp_wakeup");
-    msleep(20);
-    //gpio_direction_input(SHUTDOWN_PORT);
-    gpio_set_one_pin_io_status(gpio_wakeup_hdle, 0, "ctp_wakeup");
-
-    msleep(100);
-    for(retry=0;retry < 80; retry++)
-    {
-        ret =i2c_write_bytes(ts->client, inbuf, 0);	//Test I2C connection.
-        if (ret > 0)
-        {
-            msleep(10);
-            ret =i2c_read_bytes(ts->client, inbuf, 3);	//Test I2C connection.
-            if (ret > 0)
-            {
-                if(inbuf[2] == 0x55)
-                    {
-			    ret =i2c_write_bytes(ts->client, outbuf, 3);
-			    msleep(10);
-			    break;
-			}
-				}
-			}
-
-		}
-    printk(KERN_INFO"Detect address %0X\n", ts->client->addr);
-    //msleep(500);
-    return ret;
-}
-
-static  int gt818_reset2( struct goodix_ts_data *ts )
-{
-	int ret = 1;
-	u8 retry;
-
-	//unsigned char outbuf[3] = {0,0xff,0};
-	unsigned char inbuf[3] = {0,0xff,0};
-	//outbuf[1] = 1;
-
-	//gpio_direction_output(SHUTDOWN_PORT,0);
-	gpio_set_one_pin_io_status(gpio_wakeup_hdle, 1, "ctp_wakeup");
-	gpio_write_one_pin_value(gpio_wakeup_hdle, 0, "ctp_wakeup");
-	msleep(20);
-	//gpio_direction_input(SHUTDOWN_PORT);
-	gpio_set_one_pin_io_status(gpio_wakeup_hdle, 0, "ctp_wakeup");
-	msleep(100);
-	for(retry=0;retry < 80; retry++)
-	{
-		ret =i2c_write_bytes(ts->client, inbuf, 0);	//Test I2C connection.
-		if (ret > 0)
-		{
-			msleep(10);
-			ret =i2c_read_bytes(ts->client, inbuf, 3);	//Test I2C connection.
-			if (ret > 0)
-			{
-				//   if(inbuf[2] == 0x55)
-				//       {
-				//	    ret =i2c_write_bytes(ts->client, outbuf, 3);
-				//	    msleep(10);
-				break;
-				//		}
-			}
-		}
-
-	}
-	printk(KERN_INFO"Detect address %0X\n", ts->client->addr);
-	//msleep(500);
-	return ret;
-}
-
-
-
-static  int gt818_set_address_2( struct goodix_ts_data *ts )
-{
-    unsigned char inbuf[3] = {0,0,0};
-    int i;
-
-    for ( i = 0 ; i < 12 ; i++ )
-    {
-        if ( i2c_read_bytes( ts->client, inbuf, 3) )
-        {
-            printk(KERN_INFO"Got response\n");
-            return 1;
-        }
-        printk(KERN_INFO"wait for retry\n");
-        msleep(50);
-    }
-    return 0;
-}
-static u8  gt818_update_firmware( u8 *nvram, u16 length, struct goodix_ts_data *ts)
-{
-    u8 ret = 0;
-    u8 err = 0;
-    u8 retry_time = 0;
-    u8 i = 0;
-    u16 cur_code_addr;
-    u16 cur_frame_num, total_frame_num, cur_frame_len;
-    u32 gt80x_update_rate;
-
-    unsigned char i2c_data_buf[PACK_SIZE+2] = {0,};        //
-    unsigned char i2c_chk_data_buf[PACK_SIZE+2] = {0,};        //
-    if( length > NVRAM_LEN - NVRAM_BOOT_SECTOR_LEN )
-    {
-        printk(KERN_INFO"length too big %d %d\n", length, NVRAM_LEN - NVRAM_BOOT_SECTOR_LEN );
-        return 0;
-    }
-
-    total_frame_num = ( length + PACK_SIZE - 1) / PACK_SIZE;
-
-    //gt80x_update_sta = _UPDATING;
-    gt80x_update_rate = 0;
-
-    for( cur_frame_num = 0 ; cur_frame_num < total_frame_num ; cur_frame_num++ )
-    {
-        retry_time = 5;
-
-        cur_code_addr = NVRAM_UPDATE_START_ADDR + cur_frame_num * PACK_SIZE;
-        i2c_data_buf[0] = (cur_code_addr>>8)&0xff;
-        i2c_data_buf[1] = cur_code_addr&0xff;
-
-        i2c_chk_data_buf[0] = i2c_data_buf[0];
-        i2c_chk_data_buf[1] = i2c_data_buf[1];
-
-        if( cur_frame_num == total_frame_num - 1 )
-        {
-            cur_frame_len = length - cur_frame_num * PACK_SIZE;
-        }
-        else
-        {
-            cur_frame_len = PACK_SIZE;
-        }
-
-        //strncpy(&i2c_data_buf[2], &nvram[cur_frame_num*PACK_SIZE], cur_frame_len);
-        for(i=0;i<cur_frame_len;i++)
-        {
-            i2c_data_buf[2+i] = nvram[cur_frame_num*PACK_SIZE+i];
-            }
-        do
-        {
-            err = 0;
-
-            //ret = gt818_i2c_write( guitar_i2c_address, cur_code_addr, &nvram[cur_frame_num*I2C_FRAME_MAX_LENGTH], cur_frame_len );
-            ret = i2c_write_bytes(ts->client, i2c_data_buf, (cur_frame_len+2));
-
-            if ( ret <= 0 )
-            {
-                printk(KERN_INFO"write fail\n");
-                err = 1;
-            }
-
-            ret = i2c_read_bytes(ts->client, i2c_chk_data_buf, (cur_frame_len+2));
-           // ret = gt818_i2c_read( guitar_i2c_address, cur_code_addr, inbuf, cur_frame_len);
-
-            if ( ret <= 0 )
-            {
-                printk(KERN_INFO"read fail\n");
-                err = 1;
-            }
-
-            if( is_equal( &i2c_data_buf[2], &i2c_chk_data_buf[2], cur_frame_len ) == 0 )
-            {
-                printk(KERN_INFO"not equal\n");
-                err = 1;
-            }
-
-        } while ( err == 1 && (--retry_time) > 0 );
-
-        if( err == 1 )
-        {
-            break;
-        }
-
-        gt80x_update_rate = ( cur_frame_num + 1 )*128/total_frame_num;
-
-    }
-
-    if( err == 1 )
-    {
-        printk(KERN_INFO"write nvram fail\n");
-        return 0;
-    }
-
-    ret = gt818_nvram_store(ts);
-
-    msleep( 20 );
-
-    if( ret == 0 )
-    {
-        printk(KERN_INFO"nvram store fail\n");
-        return 0;
-    }
-
-    ret = gt818_nvram_recall(ts);
-
-    msleep( 20 );
-
-    if( ret == 0 )
-    {
-        printk(KERN_INFO"nvram recall fail\n");
-        return 0;
-    }
-
-    for ( cur_frame_num = 0 ; cur_frame_num < total_frame_num ; cur_frame_num++ )		 //	read out all the code
-    {
-
-        cur_code_addr = NVRAM_UPDATE_START_ADDR + cur_frame_num*PACK_SIZE;
-        retry_time=5;
-        i2c_chk_data_buf[0] = (cur_code_addr>>8)&0xff;
-        i2c_chk_data_buf[1] = cur_code_addr&0xff;
-
-
-        if ( cur_frame_num == total_frame_num-1 )
-        {
-            cur_frame_len = length - cur_frame_num*PACK_SIZE;
-        }
-        else
-        {
-            cur_frame_len = PACK_SIZE;
-        }
-
-        do
-        {
-            err = 0;
-            //ret = gt818_i2c_read( guitar_i2c_address, cur_code_addr, inbuf, cur_frame_len);
-            ret = i2c_read_bytes(ts->client, i2c_chk_data_buf, (cur_frame_len+2));
-
-            if ( ret == 0 )
-            {
-                err = 1;
-            }
-
-            if( is_equal( &nvram[cur_frame_num*PACK_SIZE], &i2c_chk_data_buf[2], cur_frame_len ) == 0 )
-            {
-                err = 1;
-            }
-        } while ( err == 1 && (--retry_time) > 0 );
-
-        if( err == 1 )
-        {
-            break;
-        }
-
-        gt80x_update_rate = 127 + ( cur_frame_num + 1 )*128/total_frame_num;
-    }
-
-    gt80x_update_rate = 255;
-    //gt80x_update_sta = _UPDATECHKCODE;
-
-    if( err == 1 )
-    {
-        printk(KERN_INFO"nvram validate fail\n");
-        return 0;
-    }
-    //Î¹0X00FFÐ´0XCCÂ±î¾ÊÂ¼Â½â¸
-//    i2c_chk_data_buf[0] = 0xff;
-//    i2c_chk_data_buf[1] = 0x00;
-//    i2c_chk_data_buf[2] = 0x0;
-//    ret = i2c_write_bytes(ts->client, i2c_chk_data_buf, 3);
-
-//    if( ret <= 0 )
-//    {
-//        printk(KERN_INFO"nvram validate fail\n");
-//        return 0;
-//    }
-
-    return 1;
-}
-
-static u8  gt818_update_proc( u8 *nvram, u16 length, struct goodix_ts_data *ts )
-{
-    u8 ret;
-    u8 error = 0;
-    //struct tpd_info_t tpd_info;
-    GT818_SET_INT_PIN( 0 );
-    msleep( 20 );
-    ret = gt818_reset(ts);
-    if ( ret < 0 )
-    {
-        error = 1;
-        printk(KERN_INFO"reset fail\n");
-        goto end;
-    }
-
-    ret = gt818_set_address_2( ts );
-    if ( ret == 0 )
-    {
-        error = 1;
-        printk(KERN_INFO"set address fail\n");
-        goto end;
-    }
-
-    ret = gt818_update_firmware( nvram, length, ts);
-    if ( ret == 0 )
-    {
-        error=1;
-        printk(KERN_INFO"firmware update fail\n");
-        goto end;
-    }
-
-end:
-    GT818_SET_INT_PIN( 1 );
-    //gpio_free(INT_PORT);
-    //s3c_gpio_setpull(INT_PORT, S3C_GPIO_PULL_NONE);
-      reg_val = readl(gpio_addr + PHO_PULL1_OFFSET);
-      reg_val &=(~(3<<10));
-      writel(reg_val,gpio_addr + PHO_PULL1_OFFSET);
-
-    msleep( 500 );
-    ret = gt818_reset2(ts);
-    if ( ret < 0 )
-    {
-        error=1;
-        printk(KERN_INFO"final reset fail\n");
-        goto end;
-    }
-    if ( error == 1 )
-    {
-        return 0;
-    }
-
-    i2c_pre_cmd(ts);
-    while(goodix_read_version(ts)<0);
-
-    i2c_end_cmd(ts);
-    return 1;
-}
-
-int  gt818_downloader( struct goodix_ts_data *ts,  unsigned char * data, unsigned char * path)
-{
-    struct tpd_firmware_info_t *fw_info = (struct tpd_firmware_info_t *)data;
-    int i;
-    unsigned short checksum = 0;
-    unsigned char *data_ptr = &(fw_info->data);
-    int retry = 0;
-    int ret = 0;
-    int err = 0;
-
-    struct file * file_data = NULL;
-    mm_segment_t old_fs;
-    //unsigned int rd_len;
-    unsigned int file_len = 0;
-    //unsigned char i2c_data_buf[PACK_SIZE] = {0,};
-
-    const int MAGIC_NUMBER_1 = 0x4D454449;
-    const int MAGIC_NUMBER_2 = 0x4154454B;
-
-    //pr_info("%s: %s, %d. \n", _, __func__, __LINE__);
-
-    if(path[0] == 0)
-    {
-        printk(KERN_INFO"%s\n", __func__ );
-        printk(KERN_INFO"magic number 0x%08X 0x%08X\n", fw_info->magic_number_1, fw_info->magic_number_2 );
-        printk(KERN_INFO"magic number 0x%08X 0x%08X\n", MAGIC_NUMBER_1, MAGIC_NUMBER_2 );
-        printk(KERN_INFO"current version 0x%04X, target verion 0x%04X\n", ts->version, fw_info->version );
-        printk(KERN_INFO"size %d\n", fw_info->length );
-        printk(KERN_INFO"checksum %d\n", fw_info->checksum );
-
-        if ( fw_info->magic_number_1 != MAGIC_NUMBER_1 && fw_info->magic_number_2 != MAGIC_NUMBER_2 )
-        {
-            printk(KERN_INFO"Magic number not match\n");
-            err = 0;
-            goto exit_downloader;
-        }
-//        if(((ts->version&0xff)> 0x99)||((ts->version&0xff) < 0x4a))
-//        {
-//            goto update_start;
-//        }
-//        if ( ts->version >= fw_info->version )
-//        {
-//            printk(KERN_INFO"No need to upgrade\n");
-//            err = 0;
-//            goto exit_downloader;
-//        }
-	if( ((ts->version&0xf000) | (fw_info->version&0xf000)) == 0)   //
-	{
-		 if ( (ts->version&0x1ff) >= (fw_info->version&0x1ff) )
-		{
-			TPD_DOWNLOADER_DEBUG("No need to upgrade\n");
-			goto exit_downloader;
-		}
-	 }
-      else
-	{
-		if(((ts->version&0xf000) & (fw_info->version&0xf000)) == 0xf000)    //
-		{
-			if( (ts->version&0xff) > (fw_info->version&0xff))
-			{
-				TPD_DOWNLOADER_DEBUG("No need to upgrade\n");
-				goto exit_downloader;
-			}
-			else if((ts->version&0xff) == (fw_info->version&0xff))
-			{
-				if((ts->version&0xf00) >= (fw_info->version&0xf00))
-				{
-					TPD_DOWNLOADER_DEBUG("No need to upgrade\n");
-					goto exit_downloader;
-				}
-				else
-				{
-					TPD_DOWNLOADER_DEBUG("Need to upgrade\n");
-				}
-			}
-			else
-			{
-				TPD_DOWNLOADER_DEBUG("Need to upgrade\n");
-			}
-	}
-	else if((ts->version&0xf000) == 0)
-		{
-		if( (ts->version&0xff) >= (fw_info->version&0xff))
-			{
-			TPD_DOWNLOADER_DEBUG("No need to upgrade\n");
-			goto exit_downloader;
-			}
-		else
-			{
-			TPD_DOWNLOADER_DEBUG("Need to upgrade\n");
-			}
-		}
-	else                   //
-	{
-	if( (ts->version&0xff) > (fw_info->version&0xff))
-		{
-		TPD_DOWNLOADER_DEBUG("No need to upgrade\n");
-		goto exit_downloader;
-		}
-	else
-		{
-		TPD_DOWNLOADER_DEBUG("Need to upgrade\n");
-		}
-	}
-	}
-        if ( get_chip_version( ts->version ) != get_chip_version( fw_info->version ) )
-            {
-                printk(KERN_INFO"Chip version incorrect");
-                err = 0;
-                goto exit_downloader;
-            }
-//update_start:
-        for ( i = 0 ; i < fw_info->length ; i++ )
-            checksum += data_ptr[i];
-
-        checksum = checksum%0xFFFF;
-
-        if ( checksum != fw_info->checksum )
-        {
-            printk(KERN_INFO"Checksum not match 0x%04X\n", checksum);
-            err = 0;
-            goto exit_downloader;
-        }
-    }
-    else
-    {
-        printk(KERN_INFO"Write cmd arg is:\n");
-        file_data = update_file_open(path, &old_fs);
-        printk(KERN_INFO"Write cmd arg is\n");
-        if(file_data == NULL)	//file_data has been opened at the last time
-        {
-            err = -1;
-            goto exit_downloader;
-        }
-
-
-    file_len = (update_get_flen(path))-2;
-
-        printk(KERN_INFO"current length:%d\n", file_len);
-
-            ret = file_data->f_op->read(file_data, &data_ptr[0], file_len, &file_data->f_pos);
-
-            if(ret <= 0)
-            {
-               err = -1;
-                goto exit_downloader;
-            }
-
-
-
-            update_file_close(file_data, old_fs);
-
-
-        }
-    printk(KERN_INFO"STEP_0:\n");
-    //adapter = client->adapter;
-    //gpio_free(INT_PORT);
-    //ret = gpio_request(INT_PORT, "TS_INT");	//Request IO
-    if (ret < 0)
-    {
-        printk(KERN_INFO"Failed to request GPIO:%d, ERRNO:%d\n",(int)INT_PORT,ret);
-        err = -1;
-        goto exit_downloader;
-    }
-
-    printk(KERN_INFO"STEP_1:\n");
-    err = -1;
-    while (  retry < 3 )
-        {
-            ret = gt818_update_proc( data_ptr, fw_info->length, ts);
-            if(ret == 1)
-            {
-                err = 1;
-                break;
-            }
-            retry++;
-    }
-
-exit_downloader:
-    //mt_set_gpio_mode(GPIO_CTP_EINT_PIN, GPIO_CTP_EINT_PIN_M_EINT);
-   // mt_set_gpio_out(GPIO_CTP_EN_PIN, GPIO_OUT_ONE);
-       // gpio_direction_output(INT_PORT,1);
-       // msleep(1);
-  //      gpio_free(INT_PORT);
-  //      s3c_gpio_setpull(INT_PORT, S3C_GPIO_PULL_NONE);
-		reg_val = readl(gpio_addr + PHO_PULL1_OFFSET);
-        reg_val &=(~(3<<10));
-        writel(reg_val,gpio_addr + PHO_PULL1_OFFSET);
-
-    return err;
-
-}
-//******************************End of firmware update surpport*******************************
-//¿ÉÓÃÓÚ¸ÃÇý¶¯µÄ Éè±¸Ãû¡ªÉè±¸ID ÁÐ±í
 //only one client
 static const struct i2c_device_id goodix_ts_id[] = {
 	{ GOODIX_I2C_NAME, 0 },
