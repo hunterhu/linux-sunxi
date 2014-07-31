@@ -48,6 +48,7 @@
 static int reg_val;
 const char *f3x_ts_name="gt828";
 static struct workqueue_struct *goodix_wq;
+static uint8_t read_chip_value[3] = {0x0f,0x7d,0};
 
 
 static short  goodix_read_version(struct goodix_ts_data *ts);
@@ -57,6 +58,9 @@ static short  goodix_read_version(struct goodix_ts_data *ts);
 static void goodix_ts_early_suspend(struct early_suspend *h);
 static void goodix_ts_late_resume(struct early_suspend *h);
 #endif
+
+static int i2c_read_bytes(struct i2c_client *client, uint8_t *buf, int len);
+static int i2c_write_bytes(struct i2c_client *client,uint8_t *data,int len);
 
 #ifdef DEBUG
 int sum = 0;
@@ -473,18 +477,26 @@ int ctp_detect(struct i2c_client *client, struct i2c_board_info *info)
 {
 	struct i2c_adapter *adapter = client->adapter;
 
-	if(twi_id == adapter->nr)
-	{
-		pr_info("%s: Detected chip %s at adapter %d, address 0x%02x\n",
-			 __func__, CTP_NAME, i2c_adapter_id(adapter), client->addr);
+	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE_DATA)){
+		printk("====== I2c Check Failed =====\n");
+		return -ENODEV;
+	}
 
-		strlcpy(info->type, CTP_NAME, I2C_NAME_SIZE);
-		return 0;
+	if(twi_id == adapter->nr){
+		i2c_read_bytes(client,read_chip_value,3);
+		pr_info("addr:0x%x,chip_id_value:0x%x\n",client->addr,read_chip_value[2]);
+
+		/* FIXME: Only compare GT828 PID */
+		if(read_chip_value[2] == 0x28){
+			strlcpy(info->type, CTP_NAME, I2C_NAME_SIZE);
+			return 0;
+		}
+		printk("%s:I2C connection might be something wrong ! \n",__func__);
+		return -ENODEV;
 	}else{
 		return -ENODEV;
 	}
 }
-////////////////////////////////////////////////////////////////
 
 static struct ctp_platform_ops ctp_ops = {
 	.get_pendown_state = ctp_get_pendown_state,
