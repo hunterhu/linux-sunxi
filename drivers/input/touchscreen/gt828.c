@@ -577,6 +577,7 @@ notice: init panel need to be complete within 200ms.
 *******************************************************/
 static int goodix_init_panel(struct goodix_ts_data *ts)
 {
+	/* FIXME: I have put both array for 1024x768 resolution */
 	short ret=-1;
 	uint8_t info_1024x768[] = {0x00, 0x04};
 
@@ -660,21 +661,19 @@ static int goodix_init_panel(struct goodix_ts_data *ts)
 static short  goodix_read_version(struct goodix_ts_data *ts)
 {
 	short ret;
-	uint8_t version_data[5]={0};	//store touchscreen version infomation
-	memset(version_data, 0, 5);
-	version_data[0]=0x07;
-	version_data[1]=0x17;
-	msleep(5);
-	//   pr_info("%s: %s, %d. \n", __FILE__, __func__, __LINE__);
-	//ret=i2c_read_bytes(ts->client, version_data, 4);
-      //msleep(2);
-      ret=i2c_read_bytes(ts->client, version_data, 4);
+	u8 buf[8];
+	/* GT828 0xF7D, 0xF7E, 0xF7F contains PID and VID */
+	buf[0] = 0x0f;
+	buf[1] = 0x7d;
+
+	ret = i2c_read_bytes(ts->client, buf, 5);
+	i2c_end_cmd(ts);
 	if (ret < 0)
 		return ret;
-	dev_info(&ts->client->dev," Guitar Version: %d.%d\n",version_data[3],version_data[2]);
-       ts->version = (version_data[3]<<8)+version_data[2];
-	return ret;
 
+	dev_info(&ts->client->dev,"PID:%02x, VID:%02x%02x\n", buf[2], buf[3], buf[4]);
+    ts->version = (buf[3]<<8)+buf[4];
+	return ret;
 }
 
 /*******************************************************
