@@ -536,29 +536,6 @@ static int i2c_write_bytes(struct i2c_client *client,uint8_t *data,int len)
 	return ret;
 }
 
-/*******************************************************
-
-*******************************************************/
-static int i2c_pre_cmd(struct goodix_ts_data *ts)
-{
-/*
- *GT828 doesn't have this command, the 0xFFF is not even
- *in the data sheet
- */
-#if 0
-	int ret;
-	uint8_t pre_cmd_data[2]={0};
-	pre_cmd_data[0]=0x0f;
-	pre_cmd_data[1]=0xff;
-	ret=i2c_write_bytes(ts->client,pre_cmd_data,2);
-//	msleep(2);
-	return ret;
-#endif
-}
-
-/*******************************************************
-
-*******************************************************/
 static int i2c_end_cmd(struct goodix_ts_data *ts)
 {
 	int ret;
@@ -804,84 +781,36 @@ static irqreturn_t goodix_ts_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-/*******************************************************
-
-********************************************************/
-//#if defined(INT_PORT)
 static int goodix_ts_power(struct goodix_ts_data * ts, int on)
 {
-	int ret = -1;
+	s32 ret = -1;
+	s32 success = 1;
+	u8 i2c_control_buf1[3] = {0x0F,0xF2,0xc0};  /* suspend cmd */
+	u8 i2c_control_buf2[3] = {0x0F,0xF2,0x00};
 
-	unsigned char i2c_control_buf[3] = {0x06,0x92,0x01};		//suspend cmd
-#if 0
-//#ifdef INT_PORT
-	if(ts != NULL && !ts->use_irq)
-		return -2;
-#endif
-	switch(on)
+	switch (on)
 	{
-		case 0:
-			i2c_pre_cmd(ts);               //must
-			ret = i2c_write_bytes(ts->client, i2c_control_buf, 3);
-//			printk(KERN_INFO"Send suspend cmd\n");
-			if(ret > 0)						//failed
-				ret = 0;
-			i2c_end_cmd(ts);                     //must
-			return ret;
+	case 0:
+		ret = i2c_write_bytes(ts->client, i2c_control_buf1, 3);
+		i2c_end_cmd(ts);
+		return ret;
+	case 1:
+		ctp_wakeup();
+		ret = goodix_init_panel(ts);
+		if( ret != 1){
+			printk("init panel fail!\n");
+			return -1;
+		}
+		ret = i2c_write_bytes(ts->client, i2c_control_buf2, 3);
+		msleep(10);
+		return success;
 
-		case 1:
-
-			#ifdef INT_PORT	                     //suggest use INT PORT to wake up !!!
-
-				//gpio_direction_output(INT_PORT, 0);
-				gpio_set_one_pin_io_status(gpio_int_hdle, 1, "ctp_int_port");
-				gpio_write_one_pin_value(gpio_int_hdle, 0, "ctp_int_port");
-				msleep(1);
-                          // gpio_direction_output(INT_PORT, 1);
-				gpio_set_one_pin_io_status(gpio_int_hdle, 1, "ctp_int_port");
-				gpio_write_one_pin_value(gpio_int_hdle, 1, "ctp_int_port");
-				  msleep(10);
-                          // gpio_direction_output(INT_PORT, 0);
-				gpio_set_one_pin_io_status(gpio_int_hdle, 1, "ctp_int_port");
-				gpio_write_one_pin_value(gpio_int_hdle, 0, "ctp_int_port");
-
-				//gpio_free(INT_PORT);
-				//s3c_gpio_setpull(INT_PORT, S3C_GPIO_PULL_NONE);
-				gpio_set_one_pin_pull(gpio_int_hdle, 0, "ctp_int_port");
-
-
-				if(ts->use_irq) {
-				//	s3c_gpio_cfgpin(INT_PORT, INT_CFG);	//Set IO port as interrupt port
-					ret = ctp_ops.set_irq_mode("ctp_para", "ctp_int_port", CTP_IRQ_MODE);
-					if(0 != ret){
-						printk("%s:ctp_ops.set_irq_mode err. \n", __func__);
-						return ret;
-					}
-				}
-				else
-				//gpio_direction_input(INT_PORT);
-				//Config CTP_IRQ_NO as input
-				gpio_set_one_pin_io_status(gpio_int_hdle,0, "ctp_int_port");
-
-			#else
-				//gpio_direction_output(SHUTDOWN_PORT,0);
-				gpio_set_one_pin_io_status(gpio_wakeup_hdle, 1, "ctp_wakeup");
-				gpio_write_one_pin_value(gpio_wakeup_hdle, 0, "ctp_wakeup");
-				msleep(1);
-				//gpio_direction_input(SHUTDOWN_PORT);
-				gpio_set_one_pin_io_status(gpio_wakeup_hdle, 0, "ctp_wakeup");
-			#endif
-				msleep(40);
-				ret = 0;
-				return ret;
-
-		default:
-			printk(KERN_DEBUG "%s: Cant't support this command.", f3x_ts_name);
-			return -EINVAL;
+	 default:
+	        printk("%s: Cant't support this command.",f3x_ts_name );
+	        return -EINVAL;
 	}
 
 }
-
 
 static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
