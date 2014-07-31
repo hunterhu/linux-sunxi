@@ -501,18 +501,19 @@ static struct ctp_platform_ops ctp_ops = {
 	.ts_detect = ctp_detect,
 };
 
-/*Function as i2c_master_send */
 static int i2c_read_bytes(struct i2c_client *client, uint8_t *buf, int len)
 {
 	struct i2c_msg msgs[2];
 	int ret=-1;
-	//
-	msgs[0].flags=!I2C_M_RD; //
+
+	/* address */
+	msgs[0].flags=!I2C_M_RD; 
 	msgs[0].addr=client->addr;
 	msgs[0].len=2;
 	msgs[0].buf=&buf[0];
-	//
-	msgs[1].flags=I2C_M_RD;//
+
+	/* buffer */
+	msgs[1].flags=I2C_M_RD;
 	msgs[1].addr=client->addr;
 	msgs[1].len=len-2;
 	msgs[1].buf=&buf[2];
@@ -521,16 +522,12 @@ static int i2c_read_bytes(struct i2c_client *client, uint8_t *buf, int len)
 	return ret;
 }
 
-/*******************************************************
-
-*******************************************************/
-/*Function as i2c_master_send */
 static int i2c_write_bytes(struct i2c_client *client,uint8_t *data,int len)
 {
 	struct i2c_msg msg;
 	int ret=-1;
-	//
-	msg.flags=!I2C_M_RD;//
+
+	msg.flags=!I2C_M_RD;
 	msg.addr=client->addr;
 	msg.len=len;
 	msg.buf=data;
@@ -544,6 +541,11 @@ static int i2c_write_bytes(struct i2c_client *client,uint8_t *data,int len)
 *******************************************************/
 static int i2c_pre_cmd(struct goodix_ts_data *ts)
 {
+/*
+ *GT828 doesn't have this command, the 0xFFF is not even
+ *in the data sheet
+ */
+#if 0
 	int ret;
 	uint8_t pre_cmd_data[2]={0};
 	pre_cmd_data[0]=0x0f;
@@ -551,6 +553,7 @@ static int i2c_pre_cmd(struct goodix_ts_data *ts)
 	ret=i2c_write_bytes(ts->client,pre_cmd_data,2);
 //	msleep(2);
 	return ret;
+#endif
 }
 
 /*******************************************************
