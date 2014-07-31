@@ -714,12 +714,11 @@ static void goodix_ts_work_func(struct work_struct *work)
 		goto exit_work_func;
 	} else {
 		/* print point_data read from GT828 */
-		pr_info("point_data[]\n ");
+		pr_info("point_data[0-9]: ");
 		for ( i = 0; i < 10; i++ )
 		{
-			pr_info("%d  ", point_data[i]);
+			printk("%d  ", point_data[i]);
 		}
-		pr_info("\n ");
 	}
 
 	finger = point_data[2];
