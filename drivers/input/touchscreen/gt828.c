@@ -48,7 +48,7 @@
 static int reg_val;
 const char *f3x_ts_name="gt828";
 static struct workqueue_struct *goodix_wq;
-static uint8_t read_chip_value[3] = {0x0f,0x7d,0};
+//static uint8_t read_chip_value[3] = {0x0f,0x7d,0};
 
 
 static short  goodix_read_version(struct goodix_ts_data *ts);
@@ -699,6 +699,8 @@ static void goodix_ts_work_func(struct work_struct *work)
 	s32 idx = 0;
 	s32 ret = -1;
 	s32 pos = 0;
+	s32 i = 0;
+
 	struct goodix_ts_data *ts = NULL;
 
     pr_info("%s: %s, %d. \n", __FILE__, __func__, __LINE__);
@@ -707,9 +709,22 @@ static void goodix_ts_work_func(struct work_struct *work)
 
 	/*Read the first 10 first, if touch_num > 1, read more, see line 712 */
 	ret = i2c_read_bytes(ts->client, point_data, 10);
+	if (ret <= 0){
+		printk("%s:I2C read error!",__func__);
+		goto exit_work_func;
+	} else {
+		/* print point_data read from GT828 */
+		pr_info("point_data[]\n ");
+		for ( i = 0; i < 10; i++ )
+		{
+			pr_info("%d  ", point_data[i]);
+		}
+		pr_info("\n ");
+	}
+
 	finger = point_data[2];
 	touch_num = (finger & 0x01) + !!(finger & 0x02) + !!(finger & 0x04) + !!(finger & 0x08) + !!(finger & 0x10);
-    pr_info("%s: %s, %d: tuoch_num = %d \n", __FILE__, __func__, __LINE__, touch_num);
+    pr_info("%s: %s, %d: touch_num=%d \n", __FILE__, __func__, __LINE__, touch_num);
 	if (touch_num > 1){
 		u8 buf[25];
 		buf[1] = READ_TOUCH_ADDR_L + 8;
@@ -717,11 +732,6 @@ static void goodix_ts_work_func(struct work_struct *work)
 		memcpy(&point_data[10], &buf[2], 5 * (touch_num - 1));
 	}
 	i2c_end_cmd(ts);
-
-	if (ret <= 0){
-		printk("%s:I2C read error!",__func__);
-		goto exit_work_func;
-	}
 
 	if((finger & 0xC0) != 0x80){
 		pr_info("%s: %s, %d. Data not ready \n", __FILE__, __func__, __LINE__);
