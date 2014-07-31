@@ -507,7 +507,7 @@ static int i2c_read_bytes(struct i2c_client *client, uint8_t *buf, int len)
 	int ret=-1;
 
 	/* address */
-	msgs[0].flags=!I2C_M_RD; 
+	msgs[0].flags=!I2C_M_RD;
 	msgs[0].addr=client->addr;
 	msgs[0].len=2;
 	msgs[0].buf=&buf[0];
@@ -580,8 +580,7 @@ static int goodix_init_panel(struct goodix_ts_data *ts)
 	/* FIXME: I have put both array for 1024x768 resolution */
 	short ret=-1;
 	uint8_t info_1024x768[] = {0x00, 0x04};
-
-    uint8_t config_info_c[] = {		//Touch key devlop board
+	uint8_t config_info_d[] = {
 		0x0F,0x80,
 		0x00,0x0F,0x01,0x10,0x02,0x11,0x03,0x12,
 		0x04,0x13,0x05,0x14,0x06,0x15,0x07,0x16,
@@ -598,61 +597,20 @@ static int goodix_init_panel(struct goodix_ts_data *ts)
 		0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 		0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01
 	};
-		config_info_c[72] = info_1024x768[0];
-		config_info_c[73] = info_1024x768[1];
+	config_info_d[72] = info_1024x768[0];
+	config_info_d[73] = info_1024x768[1];
 
-	uint8_t config_info_d[] = {		 //Touch key devlop board
-		0x0F,0x80,
-		0x00,0x0F,0x01,0x10,0x02,0x11,0x03,0x12,
-		0x04,0x13,0x05,0x14,0x06,0x15,0x07,0x16,
-		0x08,0x17,0x09,0x18,0x0A,0x19,0x0B,0x1A,
-		0x0C,0x1B,0x0D,0x1C,0x0E,0x1D,0x13,0x09,
-		0x12,0x08,0x11,0x07,0x10,0x06,0x0F,0x05,
-		0x0E,0x04,0x0D,0x03,0x0C,0x02,0x0B,0x01,
-		0x0A,0x00,0x0B,0x03,0x10,0x00,0x00,0x2C,
-		0x00,0x00,0x03,0x00,0x00,0x02,0x40,0x30,
-		0x60,0x03,0x00,0x05,0x00,0x03,0x20,0x05,
-		0x00,0x66,0x4E,0x60,0x49,0x06,0x00,0x23,
-		0x19,0x05,0x14,0x10,0x03,0xFC,0x01,0x00,
-		0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-		0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-		0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01
-	};
-		config_info_d[72] = info_1024x768[0];
-		config_info_d[73] = info_1024x768[1];
-
-
-       ret = goodix_read_version(ts);
-       if (ret < 0)
+    ret = goodix_read_version(ts);
+    if (ret < 0)
 		return ret;
 
-       dev_info(&ts->client->dev," Guitar Version: %d\n",ts->version);
+	dev_info(&ts->client->dev,"Init Panel...\n");
+	ret=i2c_write_bytes(ts->client,config_info_d, (sizeof(config_info_d)/sizeof(config_info_d[0])));
 
-       if((ts->version&0xff) < TPD_CHIP_VERSION_D1_FIRMWARE_BASE)
-       {
-            dev_info(&ts->client->dev," Guitar Version: C\n");
-            //config_info_c[57] = (config_info_c[57]&0xf7)|(INT_TRIGGER<<3);
-            ret=i2c_write_bytes(ts->client,config_info_c, (sizeof(config_info_c)/sizeof(config_info_c[0])));
-        }
-       else
-       {
-           if((ts->version&0xff) < TPD_CHIP_VERSION_E_FIRMWARE_BASE)
-		 dev_info(&ts->client->dev," Guitar Version: D1\n");
-           else  if((ts->version&0xff) < TPD_CHIP_VERSION_D2_FIRMWARE_BASE)
-		 dev_info(&ts->client->dev," Guitar Version: E\n");
-	       else
-		 dev_info(&ts->client->dev," Guitar Version: D2\n");
-
-            //config_info_d[57] = (config_info_d[57]&0xf7)|(INT_TRIGGER<<3);
-
-            msleep(1500);
-            ret=i2c_write_bytes(ts->client,config_info_d, (sizeof(config_info_d)/sizeof(config_info_d[0])));
-        }
 	if (ret < 0)
 		return ret;
 	msleep(10);
 	return 0;
-
 }
 
 /*******************************************************
@@ -684,7 +642,7 @@ Input:
 	id:tracking id.
 	x:input x.
 	y:input y.
-	w:input weight.	
+	w:input weight.
 Output:
 	None.
 *******************************************************/
@@ -712,7 +670,7 @@ static void goodix_touch_down(struct goodix_ts_data* ts,s32 id,s32 x,s32 y,s32 w
 Function:
 	Touch up report function.
 Input:
-	ts:private data.	
+	ts:private data.
 Output:
 	None.
 *******************************************************/
