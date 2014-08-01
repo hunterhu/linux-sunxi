@@ -8,8 +8,8 @@ cd /
 find  $LNX \
 	    -path "$LNX/arch/*" ! -path "$LNX/arch/arm*" -prune -o \
         -path "$LNX/arch/arm/*" ! -path "$LNX/arch/arm/mach-sun*"  ! -path "$LNX/arch/arm/plat-sun*" -prune -o \
-		-path "$LNX/drivers*" -prune -o \
-		-path "$LNX/scripts*" -prune -o \
+		-path "$LNX/drivers/*" ! -path "$LNX/drivers/input*" -prune -o \
+		-path "$LNX/scripts/*" -prune -o \
 		-name "*.[chxsS]" -print >$LNX/cscope.files
 
 #note: 
