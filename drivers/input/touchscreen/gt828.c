@@ -618,6 +618,7 @@ static int goodix_init_panel(struct goodix_ts_data *ts)
 		dev_info(&ts->client->dev,"Init Panel Fail...\n");
 	}
 
+#if 0
 	/* read back the configurations */
 	config_info1[0] = 0x0F;
 	config_info1[1] = 0x80;
@@ -631,6 +632,7 @@ static int goodix_init_panel(struct goodix_ts_data *ts)
 		 if ( i > 2 && 0 == (i-2) % 8 )
 			printk (KERN_DEBUG "\n");
 	}
+#endif
 	msleep(10);
 	return 0;
 }
@@ -670,7 +672,7 @@ Output:
 *******************************************************/
 static void goodix_touch_down(struct goodix_ts_data* ts,s32 id,s32 x,s32 y,s32 w)
 {
-	pr_info("source data:ID:%d, X:%d, Y:%d, W:%d\n", id, x, y, w);
+	//pr_info("source data:ID:%d, X:%d, Y:%d, W:%d\n", id, x, y, w);
 	if(1 == exchange_x_y_flag){
 		swap(x, y);
 	}
@@ -724,7 +726,7 @@ static void goodix_ts_work_func(struct work_struct *work)
 
 	struct goodix_ts_data *ts = NULL;
 
-    pr_info("%s: %s, %d. \n", __FILE__, __func__, __LINE__);
+    //pr_info("%s: %s, %d. \n", __FILE__, __func__, __LINE__);
 
 	ts = container_of(work, struct goodix_ts_data, work);
 
@@ -734,17 +736,19 @@ static void goodix_ts_work_func(struct work_struct *work)
 		printk("%s:I2C read error!",__func__);
 		goto exit_work_func;
 	} else {
+#if 0
 		/* print point_data read from GT828 */
 		pr_info("point_data[0-9]: ");
 		for ( i = 0; i < 10; i++ )
 		{
 			printk("%d  ", point_data[i]);
 		}
+#endif
 	}
 
 	finger = point_data[2];
 	touch_num = (finger & 0x01) + !!(finger & 0x02) + !!(finger & 0x04) + !!(finger & 0x08) + !!(finger & 0x10);
-    pr_info("%s: %s, %d: touch_num=%d \n", __FILE__, __func__, __LINE__, touch_num);
+    //pr_info("%s: %s, %d: touch_num=%d \n", __FILE__, __func__, __LINE__, touch_num);
 	if (touch_num > 1){
 		u8 buf[25];
 		buf[1] = READ_TOUCH_ADDR_L + 8;
@@ -791,11 +795,11 @@ static void goodix_ts_work_func(struct work_struct *work)
 
 			pos += 5;
 
-			pr_info("%s: %s, %d. Touch Down\n", __FILE__, __func__, __LINE__);
+			//pr_info("%s: %s, %d. Touch Down\n", __FILE__, __func__, __LINE__);
 			goodix_touch_down(ts, idx, input_x, input_y, input_w);
 		}
 	}else{
-		pr_info("%s: %s, %d. Touch Up\n", __FILE__, __func__, __LINE__);
+		//pr_info("%s: %s, %d. Touch Up\n", __FILE__, __func__, __LINE__);
 		goodix_touch_up(ts);
 	}
 	/* Until support touch keys */
@@ -821,7 +825,7 @@ static irqreturn_t goodix_ts_irq_handler(int irq, void *dev_id)
 	reg_val = readl(gpio_addr + PIO_INT_STAT_OFFSET);
 	if(reg_val&(1<<(CTP_IRQ_NO)))
 	{
-		print_int_info("%s: %d. ==CTP_IRQ_NO=\n", __func__, __LINE__);
+		//print_int_info("%s: %d. ==CTP_IRQ_NO=\n", __func__, __LINE__);
 		//clear the CTP_IRQ_NO interrupt pending
 		writel(reg_val&(1<<(CTP_IRQ_NO)),gpio_addr + PIO_INT_STAT_OFFSET);
 		queue_work(goodix_wq, &ts->work);
