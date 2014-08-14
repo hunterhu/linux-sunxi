@@ -18,8 +18,6 @@
 #include <linux/input.h>
 
 #define GOODIX_I2C_NAME "gt828"
-#define TOUCH_MAX_HEIGHT 	768
-#define TOUCH_MAX_WIDTH	    1024
 
 #define PIO_BASE_ADDRESS             (0x01c20800)
 #define PIO_RANGE_SIZE               (0x400)

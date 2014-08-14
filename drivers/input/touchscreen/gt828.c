@@ -683,6 +683,11 @@ static void goodix_touch_down(struct goodix_ts_data* ts,s32 id,s32 x,s32 y,s32 w
 		y = SCREEN_MAX_WIDTH - y;
 	}
 	pr_info("report data:ID:%d, X:%d, Y:%d, W:%d\n", id, x, y, w);
+	/*TODO:
+	 *this reporting is for multi touch not for single touch
+	 *after testing multi touch working, fill in the single touch
+	 *case
+	 */
 	input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x);
 	input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y);
 	input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, w);
@@ -959,15 +964,15 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		input_set_capability(ts->input_dev,EV_KEY,touch_key_array[retry]);
 	}
 #endif
-	input_set_abs_params(ts->input_dev, ABS_X, 0, TOUCH_MAX_HEIGHT, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_Y, 0, TOUCH_MAX_WIDTH, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_X, 0, SCREEN_MAX_HEIGHT, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_Y, 0, SCREEN_MAX_WIDTH, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_PRESSURE, 0, 255, 0, 0);
 
 #ifdef GOODIX_MULTI_TOUCH
 	input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, 0, TOUCH_MAX_HEIGHT, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, 0, TOUCH_MAX_WIDTH, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, 0, SCREEN_MAX_HEIGHT, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, 0, SCREEN_MAX_WIDTH, 0, 0);
 #endif
 
 	sprintf(ts->phys, "input/ts");
