@@ -18,8 +18,8 @@
 #include <linux/input.h>
 
 #define GOODIX_I2C_NAME "gt828"
-#define TOUCH_MAX_HEIGHT 	1024
-#define TOUCH_MAX_WIDTH	    768
+#define TOUCH_MAX_HEIGHT 	768
+#define TOUCH_MAX_WIDTH	    1024
 
 #define PIO_BASE_ADDRESS             (0x01c20800)
 #define PIO_RANGE_SIZE               (0x400)
@@ -42,7 +42,7 @@
 #define INT_TRIGGER		1	   // 1=rising 0=falling
 #define POLL_TIME		10	//actual query spacing interval:POLL_TIME+6
 
-//#define GOODIX_MULTI_TOUCH
+#define GOODIX_MULTI_TOUCH
 #ifdef GOODIX_MULTI_TOUCH
 	#define MAX_FINGER_NUM	5
 #else
