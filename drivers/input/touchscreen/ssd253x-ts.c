@@ -1134,14 +1134,14 @@ static void ssd2533_resume(struct early_suspend *handler)
 #ifdef CONFIG_PM
 static int ssd2533_suspend(struct i2c_client *client, pm_message_t mesg)
 {
-	struct ssd2533_ts *ts = i2c_get_clientdata(client);
+	//struct ssd2533_ts *ts = i2c_get_clientdata(client);
 	in_sleep_ssd2533(client);
 	return 0;
 }
 
 static int ssd2533_resume(struct i2c_client *client)
 {
-	struct ssd2533_ts *ts = i2c_get_clientdata(client);
+	//struct ssd2533_ts *ts = i2c_get_clientdata(client);
 	out_sleep_ssd2533(client);
 	return 0;
 }
