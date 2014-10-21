@@ -3,7 +3,7 @@
 # -o : boolean OR operator
 
 #replace it with your linux kernel directory
-LNX=$HOME/projects/hunterhu-github/a20-som-paydia-github/sunxi-bsp/linux-sunxi
+LNX=`pwd`
 cd / 	
 find  $LNX \
 	    -path "$LNX/arch/*" ! -path "$LNX/arch/arm*" -prune -o \
