@@ -1011,7 +1011,7 @@ static int tp_ssd2533_probe(struct i2c_client *client, const struct i2c_device_i
 		goto exit_set_irq_mode;
 	}
 
-	err =  request_irq(SW_INT_IRQNO_PIO, stylus_action, IRQF_TRIGGER_RISING | IRQF_SHARED, client->name, ts);
+	err =  request_irq(SW_INT_IRQNO_PIO, stylus_action, IRQF_SHARED, client->name, ts);
 	if (err < 0) {
 		pr_info( "ssd2533_probe: request irq failed\n");
 		goto exit_irq_request_failed;
